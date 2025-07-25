@@ -7,6 +7,12 @@ const mongoose = require("mongoose");
 const app = express();
 const server = http.createServer(app);
 
+const cors = require('cors'); // Install cors: npm install cors
+
+// Middleware
+app.use(cors()); // Use cors middleware
+app.use(express.json({ extended: false })); // To accept JSON data in the body
+
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
@@ -14,6 +20,8 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+
+app.use("/api/users", require("./routes/users"));
 
 // Database Connection
 mongoose
