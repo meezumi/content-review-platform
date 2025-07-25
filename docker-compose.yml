@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Backend Service
+  server:
+    build: ./server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app/server # Mount host directory to container for development
+      - /app/server/node_modules # Do not map node_modules from host
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/content_review_db
+    depends_on:
+      - mongo
+
+  # Frontend Service
+  client:
+    build: ./client
+    ports:
+      - "3000:80"
+    volumes:
+      - ./client/src:/app/client/src # Mount src for hot-reloading in development
+    depends_on:
+      - server
+
+  # Database Service
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
