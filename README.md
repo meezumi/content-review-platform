@@ -37,7 +37,7 @@ The technology stack is chosen to reflect modern, in-demand skills in the softwa
 
 *   **Deployment & DevOps:**
     *   **Containerization:** Docker & Docker Compose
-    *   **Deployment Platform:** (Planned) AWS, Heroku, or DigitalOcean
+    *   **Deployment:** In Testing phase
 
 ---
 
