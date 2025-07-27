@@ -1,4 +1,5 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -22,6 +23,14 @@ const io = new Server(server, {
 });
 
 app.use("/api/users", require("./routes/users"));
+app.use("/api/documents", require("./routes/documents"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+const fs = require("fs");
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
 
 // Database Connection
 mongoose
