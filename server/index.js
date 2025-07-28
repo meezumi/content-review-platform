@@ -1,59 +1,102 @@
 require("dotenv").config();
-const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
+const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
+const jwt = require("jsonwebtoken");
+
+// Import Mongoose Models
+const Comment = require("./models/Comment");
+const User = require("./models/User");
 
 const app = express();
 const server = http.createServer(app);
 
-const cors = require('cors'); // Install cors: npm install cors
-
 // Middleware
-app.use(cors()); // Use cors middleware
-app.use(express.json({ extended: false })); // To accept JSON data in the body
+app.use(cors());
+app.use(express.json());
 
-// Initialize Socket.IO
+// Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // Allow requests from our React client
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
 
+// Database Connection
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected successfully."))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+// Define API routes
 app.use("/api/users", require("./routes/users"));
 app.use("/api/documents", require("./routes/documents"));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/comments", require("./routes/comments")); // Add new comments route
 
-const fs = require("fs");
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-// Database Connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("MongoDB connected successfully."))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
-app.get("/", (req, res) => {
-  res.send("<h1>Content Review Platform Backend</h1>");
+// Socket.IO Middleware for Authentication
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error("Authentication error: No token provided"));
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = decoded.user;
+    next();
+  } catch (err) {
+    next(new Error("Authentication error: Invalid token"));
+  }
 });
 
-// Socket.IO connection handler
+// Socket.IO Connection Handler
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log("A user connected:", socket.id, "with user ID:", socket.user.id);
 
-  // Example: Listen for a 'comment' event from a client
-  socket.on("comment", (data) => {
-    console.log("Comment received:", data);
-    // Broadcast the comment to all other clients
-    socket.broadcast.emit("new_comment", data);
+  socket.on("joinRoom", (documentId) => {
+    socket.join(documentId);
+    console.log(`User ${socket.id} joined room ${documentId}`);
+  });
+
+  socket.on("leaveRoom", (documentId) => {
+    socket.leave(documentId);
+    console.log(`User ${socket.id} left room ${documentId}`);
+  });
+
+  socket.on("newComment", async ({ documentId, text }) => {
+    try {
+      const user = await User.findById(socket.user.id).select("username");
+      const comment = new Comment({
+        text,
+        document: documentId,
+        author: socket.user.id,
+      });
+      await comment.save();
+
+      const commentData = {
+        _id: comment._id,
+        text: comment.text,
+        author: { _id: user._id, username: user.username },
+        createdAt: comment.createdAt,
+      };
+
+      // Broadcast to everyone in the specific document room
+      io.to(documentId).emit("commentReceived", commentData);
+      console.log(`Broadcasting new comment to room ${documentId}`);
+    } catch (err) {
+      console.error("Error saving or broadcasting comment:", err);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -62,7 +105,6 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

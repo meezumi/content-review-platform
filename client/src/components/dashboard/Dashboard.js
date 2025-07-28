@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+
 import {
   Typography,
   Container,
@@ -14,8 +16,14 @@ import {
 
 const Dashboard = () => {
   const [file, setFile] = useState(null);
+  const navigate = useNavigate(); // Initialize navigate
   const [documents, setDocuments] = useState([]);
   const token = useSelector((state) => state.auth.token);
+
+  const handleReviewClick = (docId) => {
+    navigate(`/review/${docId}`); // Function to navigate to the review page
+  };
+
 
   const fetchDocuments = async () => {
     const config = { headers: { "x-auth-token": token } };
@@ -99,7 +107,11 @@ const Dashboard = () => {
               ).toLocaleDateString()}`}
             />
             {/* In a real app, clicking this would navigate to the review page */}
-            <Button variant="outlined" size="small">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => handleReviewClick(doc._id)}
+            >
               Review
             </Button>
           </ListItem>

@@ -55,4 +55,22 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+router.get("/:id", auth, async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ msg: "Document not found" });
+    }
+    // For this project, we assume if a user has the ID, they can view it.
+    res.json(document);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ msg: "Document not found" });
+    }
+    res.status(500).send("Server Error");
+  }
+});
+
 module.exports = router;

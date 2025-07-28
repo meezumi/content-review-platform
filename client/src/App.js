@@ -9,6 +9,8 @@ import { useSelector } from "react-redux";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import Dashboard from "./components/dashboard/Dashboard";
+import ReviewPage from './components/review/ReviewPage';
+
 
 // A wrapper for protected routes
 const PrivateRoute = ({ children }) => {
@@ -22,7 +24,9 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+
         <Route path="/register" element={<Register />} />
+        
         <Route
           path="/dashboard"
           element={
@@ -31,6 +35,16 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        <Route
+          path="/review/:id"
+          element={
+            <PrivateRoute>
+              <ReviewPage />
+            </PrivateRoute>
+          }
+        />
+
         {/* Redirect base URL to login or dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
