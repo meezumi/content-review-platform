@@ -10,6 +10,10 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import Dashboard from "./components/dashboard/Dashboard";
 import ReviewPage from './components/review/ReviewPage';
+import AllDocuments from './components/dashboard/AllDocuments';
+import Navbar from './components/layout/Navbar'; 
+
+
 
 
 // A wrapper for protected routes
@@ -22,11 +26,10 @@ const PrivateRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      <Navbar />
       <Routes>
         <Route path="/login" element={<Login />} />
-
         <Route path="/register" element={<Register />} />
-        
         <Route
           path="/dashboard"
           element={
@@ -35,7 +38,14 @@ function App() {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/all-documents"
+          element={
+            <PrivateRoute>
+              <AllDocuments />
+            </PrivateRoute>
+          }
+        />{" "}
         <Route
           path="/review/:id"
           element={
@@ -44,7 +54,6 @@ function App() {
             </PrivateRoute>
           }
         />
-
         {/* Redirect base URL to login or dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>

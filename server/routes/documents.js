@@ -55,6 +55,22 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+// @route   GET api/documents/all
+// @desc    Get all documents from all users
+// @access  Private
+router.get('/all', auth, async (req, res) => {
+  try {
+    const documents = await Document.find({})
+      .populate('uploader', 'username') // Also get the uploader's name
+      .sort({ createdAt: -1 });
+    res.json(documents);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+
 router.get("/:id", auth, async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);

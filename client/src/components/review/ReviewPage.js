@@ -15,6 +15,7 @@ import {
   ListItemText,
   Divider,
   Grid,
+  Snackbar
 } from "@mui/material";
 
 const ReviewPage = () => {
@@ -25,6 +26,15 @@ const ReviewPage = () => {
   const [socket, setSocket] = useState(null);
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+
+  const handleCopyLink = () => {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+      setShowSnackbar(true);
+    });
+  };
+
 
   // Effect to establish and clean up socket connection
   useEffect(() => {
@@ -86,9 +96,19 @@ const ReviewPage = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        {document.originalName}
-      </Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <Typography variant="h4" gutterBottom>
+          {document.originalName}
+        </Typography>
+        <Button variant="contained" onClick={handleCopyLink}>
+          Copy Share Link
+        </Button>
+      </Box>
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ height: "80vh", p: 1, backgroundColor: "#f5f5f5" }}>
@@ -149,6 +169,12 @@ const ReviewPage = () => {
           </Paper>
         </Grid>
       </Grid>
+      <Snackbar
+        open={showSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setShowSnackbar(false)}
+        message="Link copied to clipboard!"
+      />
     </Container>
   );
 };
