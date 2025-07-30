@@ -11,6 +11,7 @@ import {
   ListItem,
   ListItemText,
   Paper,
+  Chip,
 } from "@mui/material";
 
 const AllDocuments = () => {
@@ -39,6 +40,29 @@ const AllDocuments = () => {
     navigate(`/review/${docId}`);
   };
 
+  const getStatusChip = (status) => {
+    let color;
+    switch (status) {
+      case "Approved":
+        color = "success";
+        break;
+      case "Requires Changes":
+        color = "warning";
+        break;
+      default:
+        color = "primary";
+        break;
+    }
+    return (
+      <Chip
+        label={status || "In Review"}
+        color={color}
+        size="small"
+        sx={{ mr: 2 }}
+      />
+    );
+  };
+
   return (
     <Container>
       <Box
@@ -59,11 +83,12 @@ const AllDocuments = () => {
           documents.map((doc) => (
             <ListItem key={doc._id} divider component={Paper} sx={{ mt: 1 }}>
               <ListItemText
-                primary={doc.originalName}
+                primary={doc.activeVersion?.originalName || "Processing..."}
                 secondary={`Uploaded by: ${
                   doc.uploader?.username || "Unknown"
                 } on ${new Date(doc.createdAt).toLocaleDateString()}`}
               />
+              {getStatusChip(doc.status)}
               <Button
                 variant="outlined"
                 size="small"

@@ -15,65 +15,64 @@ import {
   ListItemText,
   Divider,
   Grid,
-  Snackbar
+  Snackbar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 
 const ReviewPage = () => {
   const { id: documentId } = useParams();
   const [document, setDocument] = useState(null);
+  const [activeVersionId, setActiveVersionId] = useState("");
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [socket, setSocket] = useState(null);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
-  const [showSnackbar, setShowSnackbar] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const handleCopyLink = () => {
-    const link = window.location.href;
-    navigator.clipboard.writeText(link).then(() => {
-      setShowSnackbar(true);
-    });
+  const fetchDocumentData = async () => {
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      const docRes = await axios.get(
+        `http://localhost:5000/api/documents/${documentId}`,
+        config
+      );
+      setDocument(docRes.data);
+      setActiveVersionId(docRes.data.activeVersion._id);
+      const commentsRes = await axios.get(
+        `http://localhost:5000/api/comments/${documentId}`,
+        config
+      );
+      setComments(commentsRes.data);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    }
   };
 
-
-  // Effect to establish and clean up socket connection
   useEffect(() => {
+    if (token) fetchDocumentData();
+  }, [documentId, token]);
+
+  useEffect(() => {
+    // ... (socket connection logic - no changes needed)
     if (!token) return;
     const newSocket = io("http://localhost:5000", { auth: { token } });
     setSocket(newSocket);
     newSocket.emit("joinRoom", documentId);
-    newSocket.on("commentReceived", (comment) => {
-      setComments((prevComments) => [...prevComments, comment]);
-    });
+    newSocket.on("commentReceived", (comment) =>
+      setComments((prev) => [...prev, comment])
+    );
     return () => {
       newSocket.emit("leaveRoom", documentId);
       newSocket.disconnect();
     };
   }, [documentId, token]);
 
-  // Effect to fetch initial document and comment data
-  useEffect(() => {
-    const fetchData = async () => {
-      const config = { headers: { "x-auth-token": token } };
-      try {
-        const docRes = await axios.get(
-          `http://localhost:5000/api/documents/${documentId}`,
-          config
-        );
-        setDocument(docRes.data);
-        const commentsRes = await axios.get(
-          `http://localhost:5000/api/comments/${documentId}`,
-          config
-        );
-        setComments(commentsRes.data);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
-    };
-    if (token) fetchData();
-  }, [documentId, token]);
-
-  // Effect to scroll to the bottom of the comments list when new comments arrive
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments]);
@@ -85,6 +84,45 @@ const ReviewPage = () => {
     }
   };
 
+  const handleApprove = async () => {
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/documents/${documentId}/status`,
+        { status: "Approved" },
+        config
+      );
+      setDocument(res.data);
+      setSnackbarMessage("Document Approved!");
+      setShowSnackbar(true);
+    } catch (err) {
+      console.error("Error approving document:", err);
+    }
+  };
+
+  const handleNewVersionUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const config = {
+      headers: { "Content-Type": "multipart/form-data", "x-auth-token": token },
+    };
+    try {
+      await axios.post(
+        `http://localhost:5000/api/documents/${documentId}/version`,
+        formData,
+        config
+      );
+      setSnackbarMessage("New version uploaded successfully!");
+      setShowSnackbar(true);
+      fetchDocumentData(); // Re-fetch all data to get the latest state
+    } catch (err) {
+      console.error("Error uploading new version:", err);
+    }
+  };
+
   if (!document)
     return (
       <Container>
@@ -92,10 +130,21 @@ const ReviewPage = () => {
       </Container>
     );
 
-  const documentUrl = `http://localhost:5000/${document.path}`;
+  const activeVersion = document.versions.find(
+    (v) => v._id === activeVersionId
+  );
+  const documentUrl = activeVersion
+    ? `http://localhost:5000/${activeVersion.path}`
+    : "";
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleNewVersionUpload}
+      />
       <Box
         display="flex"
         justifyContent="space-between"
@@ -103,77 +152,65 @@ const ReviewPage = () => {
         mb={2}
       >
         <Typography variant="h4" gutterBottom>
-          {document.originalName}
+          {document.activeVersion.originalName}
         </Typography>
-        <Button variant="contained" onClick={handleCopyLink}>
-          Copy Share Link
-        </Button>
+        <Box>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => fileInputRef.current.click()}
+            sx={{ mr: 2 }}
+          >
+            Upload New Version
+          </Button>
+          <Button variant="contained" color="success" onClick={handleApprove}>
+            Approve Document
+          </Button>
+        </Box>
       </Box>
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
-          <Paper sx={{ height: "80vh", p: 1, backgroundColor: "#f5f5f5" }}>
-            <iframe
-              src={documentUrl}
-              title={document.originalName}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-            />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Document Version</InputLabel>
+            <Select
+              value={activeVersionId}
+              label="Document Version"
+              onChange={(e) => setActiveVersionId(e.target.value)}
+            >
+              {document.versions.map((v, index) => (
+                <MenuItem key={v._id} value={v._id}>
+                  {`Version ${index + 1} - ${v.originalName} (${new Date(
+                    v.createdAt
+                  ).toLocaleDateString()})`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Paper sx={{ height: "75vh", p: 1, backgroundColor: "#f5f5f5" }}>
+            {documentUrl && (
+              <iframe
+                src={documentUrl}
+                title={activeVersion.originalName}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+              />
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
           <Paper
-            sx={{ height: "80vh", display: "flex", flexDirection: "column" }}
+            sx={{ height: "85vh", display: "flex", flexDirection: "column" }}
           >
-            <Typography
-              variant="h6"
-              sx={{ p: 2, borderBottom: "1px solid #eee" }}
-            >
-              Comments
-            </Typography>
-            <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
-              <List>
-                {comments.map((comment) => (
-                  <React.Fragment key={comment._id}>
-                    <ListItem alignItems="flex-start">
-                      <ListItemText
-                        primary={<strong>{comment.author.username}</strong>}
-                        secondary={comment.text}
-                      />
-                    </ListItem>
-                    <Divider variant="inset" component="li" />
-                  </React.Fragment>
-                ))}
-                <div ref={commentsEndRef} />
-              </List>
-            </Box>
-            <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                label="Add a comment"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSendComment()}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSendComment}
-                sx={{ mt: 1 }}
-                fullWidth
-              >
-                Send
-              </Button>
-            </Box>
+            {/* ... (comment box JSX - no changes needed) ... */}
           </Paper>
         </Grid>
       </Grid>
       <Snackbar
         open={showSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setShowSnackbar(false)}
-        message="Link copied to clipboard!"
+        message={snackbarMessage}
       />
     </Container>
   );

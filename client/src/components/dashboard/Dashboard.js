@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-
+import { useNavigate } from "react-router-dom";
 import {
   Typography,
   Container,
@@ -12,24 +11,23 @@ import {
   ListItem,
   ListItemText,
   Paper,
+  Chip,
 } from "@mui/material";
 
 const Dashboard = () => {
   const [file, setFile] = useState(null);
-  const navigate = useNavigate(); // Initialize navigate
   const [documents, setDocuments] = useState([]);
   const token = useSelector((state) => state.auth.token);
-
-  const handleReviewClick = (docId) => {
-    navigate(`/review/${docId}`); // Function to navigate to the review page
-  };
-
+  const navigate = useNavigate();
 
   const fetchDocuments = async () => {
     const config = { headers: { "x-auth-token": token } };
     try {
+      // This endpoint now needs to be api/documents/all or a new one for just the user's docs.
+      // For simplicity in the dashboard, let's assume we want all docs here as well.
+      // If you wanted only user's docs, you'd need a separate endpoint.
       const res = await axios.get(
-        "http://localhost:5000/api/documents",
+        "http://localhost:5000/api/documents/all",
         config
       );
       setDocuments(res.data);
@@ -58,16 +56,45 @@ const Dashboard = () => {
       },
     };
     try {
+      // Use the new initial upload endpoint
       await axios.post(
         "http://localhost:5000/api/documents/upload",
         formData,
         config
       );
       setFile(null); // Clear the file input
+      document.querySelector('input[type="file"]').value = ""; // Also clear the browser's input field display
       fetchDocuments(); // Refresh the list
     } catch (err) {
       console.error("Error uploading file", err);
     }
+  };
+
+  const handleReviewClick = (docId) => {
+    navigate(`/review/${docId}`);
+  };
+
+  const getStatusChip = (status) => {
+    let color;
+    switch (status) {
+      case "Approved":
+        color = "success";
+        break;
+      case "Requires Changes":
+        color = "warning";
+        break;
+      default:
+        color = "primary";
+        break;
+    }
+    return (
+      <Chip
+        label={status || "In Review"}
+        color={color}
+        size="small"
+        sx={{ mr: 2 }}
+      />
+    );
   };
 
   return (
@@ -81,7 +108,7 @@ const Dashboard = () => {
           mb: 2,
         }}
       >
-        <Typography variant="h4">Dashboard</Typography>
+        <Typography variant="h4">My Dashboard</Typography>
       </Box>
 
       <Paper sx={{ p: 2, mb: 4 }}>
@@ -101,12 +128,12 @@ const Dashboard = () => {
         {documents.map((doc) => (
           <ListItem key={doc._id} divider component={Paper} sx={{ mt: 1 }}>
             <ListItemText
-              primary={doc.originalName}
+              primary={doc.activeVersion?.originalName || "Processing..."}
               secondary={`Uploaded on: ${new Date(
                 doc.createdAt
               ).toLocaleDateString()}`}
             />
-            {/* In a real app, clicking this would navigate to the review page */}
+            {getStatusChip(doc.status)}
             <Button
               variant="outlined"
               size="small"
