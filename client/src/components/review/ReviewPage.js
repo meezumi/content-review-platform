@@ -59,7 +59,6 @@ const ReviewPage = () => {
   }, [documentId, token]);
 
   useEffect(() => {
-    // ... (socket connection logic - no changes needed)
     if (!token) return;
     const newSocket = io("http://localhost:5000", { auth: { token } });
     setSocket(newSocket);
@@ -202,7 +201,7 @@ const ReviewPage = () => {
           <Paper
             sx={{ height: "85vh", display: "flex", flexDirection: "column" }}
           >
-            {/* ... (comment box JSX - no changes needed) ... */}
+
           </Paper>
         </Grid>
       </Grid>

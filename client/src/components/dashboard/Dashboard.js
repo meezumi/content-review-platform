@@ -23,9 +23,7 @@ const Dashboard = () => {
   const fetchDocuments = async () => {
     const config = { headers: { "x-auth-token": token } };
     try {
-      // This endpoint now needs to be api/documents/all or a new one for just the user's docs.
-      // For simplicity in the dashboard, let's assume we want all docs here as well.
-      // If you wanted only user's docs, you'd need a separate endpoint.
+     
       const res = await axios.get(
         "http://localhost:5000/api/documents/all",
         config

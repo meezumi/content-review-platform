@@ -14,8 +14,6 @@ import AllDocuments from './components/dashboard/AllDocuments';
 import Navbar from './components/layout/Navbar'; 
 
 
-
-
 // A wrapper for protected routes
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
