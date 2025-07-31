@@ -25,7 +25,7 @@ const AllDocuments = () => {
       const config = { headers: { "x-auth-token": token } };
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/documents/all",
+          "http://localhost:5000/api/documents/shared",
           config
         );
         setDocuments(res.data);

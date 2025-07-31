@@ -21,11 +21,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const fetchDocuments = async () => {
+    if (!token) return;
     const config = { headers: { "x-auth-token": token } };
     try {
-     
+      // This is the updated endpoint for the user's own documents
       const res = await axios.get(
-        "http://localhost:5000/api/documents/all",
+        "http://localhost:5000/api/documents/mine",
         config
       );
       setDocuments(res.data);
@@ -35,9 +36,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchDocuments();
-    }
+    fetchDocuments();
   }, [token]);
 
   const onFileChange = (e) => {
@@ -45,6 +44,7 @@ const Dashboard = () => {
   };
 
   const onFileUpload = async () => {
+    if (!file) return;
     const formData = new FormData();
     formData.append("file", file);
     const config = {
@@ -54,15 +54,17 @@ const Dashboard = () => {
       },
     };
     try {
-      // Use the new initial upload endpoint
       await axios.post(
         "http://localhost:5000/api/documents/upload",
         formData,
         config
       );
-      setFile(null); // Clear the file input
-      document.querySelector('input[type="file"]').value = ""; // Also clear the browser's input field display
-      fetchDocuments(); // Refresh the list
+      setFile(null);
+      // A more robust way to clear the file input's displayed text
+      if (document.querySelector('input[type="file"]')) {
+        document.querySelector('input[type="file"]').value = "";
+      }
+      fetchDocuments(); // Refresh the list with the newly uploaded document
     } catch (err) {
       console.error("Error uploading file", err);
     }

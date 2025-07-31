@@ -28,6 +28,7 @@ const ReviewPage = () => {
   const [activeVersionId, setActiveVersionId] = useState("");
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [collaboratorEmail, setCollaboratorEmail] = useState("");
   const [socket, setSocket] = useState(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -122,6 +123,26 @@ const ReviewPage = () => {
     }
   };
 
+  const handleAddCollaborator = async () => {
+    if (!collaboratorEmail.trim()) return;
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      await axios.post(
+        `http://localhost:5000/api/documents/${documentId}/collaborator`,
+        { email: collaboratorEmail },
+        config
+      );
+      setSnackbarMessage("Collaborator added successfully!");
+      setShowSnackbar(true);
+      setCollaboratorEmail("");
+    } catch (err) {
+      setSnackbarMessage(
+        err.response?.data?.msg || "Error adding collaborator"
+      );
+      setShowSnackbar(true);
+    }
+  };
+
   if (!document)
     return (
       <Container>
@@ -201,7 +222,66 @@ const ReviewPage = () => {
           <Paper
             sx={{ height: "85vh", display: "flex", flexDirection: "column" }}
           >
-
+            <Typography
+              variant="h6"
+              sx={{ p: 2, borderBottom: "1px solid #eee" }}
+            >
+              Comments
+            </Typography>
+            <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
+              <List>
+                {comments.map((comment) => (
+                  <React.Fragment key={comment._id}>
+                    <ListItem>
+                      <ListItemText
+                        primary={<strong>{comment.author.username}</strong>}
+                        secondary={comment.text}
+                      />
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                ))}
+                <div ref={commentsEndRef} />
+              </List>
+            </Box>
+            <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="Add a comment"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendComment()}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSendComment}
+                sx={{ mt: 1 }}
+                fullWidth
+              >
+                Send
+              </Button>
+            </Box>
+            {/* --- PERMISSIONS UI --- */}
+            <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
+              <Typography variant="h6">Manage Access</Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="Add user by email"
+                value={collaboratorEmail}
+                onChange={(e) => setCollaboratorEmail(e.target.value)}
+                sx={{ mt: 1, mb: 1 }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleAddCollaborator}
+                fullWidth
+              >
+                Add Collaborator
+              </Button>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

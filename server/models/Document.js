@@ -10,7 +10,6 @@ const VersionSchema = new mongoose.Schema({
 });
 
 const DocumentSchema = new mongoose.Schema({
-
   activeVersion: VersionSchema,
   versions: [VersionSchema],
   uploader: {
@@ -18,6 +17,7 @@ const DocumentSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   status: {
     type: String,
     enum: ["In Review", "Approved", "Requires Changes"],

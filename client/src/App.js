@@ -37,7 +37,7 @@ function App() {
           }
         />
         <Route
-          path="/all-documents"
+          path="/shared"
           element={
             <PrivateRoute>
               <AllDocuments />
