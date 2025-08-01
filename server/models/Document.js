@@ -23,6 +23,10 @@ const DocumentSchema = new mongoose.Schema({
     enum: ["In Review", "Approved", "Requires Changes"],
     default: "In Review",
   },
+  category: {
+    type: String,
+    default: "General",
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

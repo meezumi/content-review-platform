@@ -25,6 +25,9 @@ const upload = multer({ storage: storage });
 router.post("/upload", [auth, upload.single("file")], async (req, res) => {
   try {
     const { filename, path, originalname, mimetype, size } = req.file;
+
+     const { category } = req.body;
+
     const newVersion = {
       filename,
       path,
@@ -38,6 +41,7 @@ router.post("/upload", [auth, upload.single("file")], async (req, res) => {
       versions: [newVersion],
       uploader: req.user.id,
       collaborators: [req.user.id], // Uploader is automatically a collaborator
+      category: category || "General",
     });
 
     const doc = await newDocument.save();
