@@ -59,7 +59,9 @@ const ReviewPage = () => {
         config
       );
       setDocument(docRes.data);
-      setActiveVersionId(docRes.data.activeVersion._id);
+      if (docRes.data.versions && docRes.data.versions.length > 0) {
+        setActiveVersionId(docRes.data.versions[0]._id);
+      }
       const commentsRes = await axios.get(
         `http://localhost:5000/api/comments/${documentId}`,
         config
