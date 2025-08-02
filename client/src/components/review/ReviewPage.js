@@ -36,7 +36,6 @@ const pageTransition = {
 };
 
 
-
 const ReviewPage = () => {
   const { id: documentId } = useParams();
   const [document, setDocument] = useState(null);

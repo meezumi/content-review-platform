@@ -11,8 +11,10 @@ services:
       - /app/server/node_modules # Do not map node_modules from host
     environment:
       - MONGO_URI=mongodb://mongo:27017/content_review_db
+      - AI_SERVICE_URL=http://ai-service:8000
     depends_on:
       - mongo
+      - ai-service
 
   # Frontend Service
   client:
@@ -31,6 +33,15 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+
+  ai-service:
+    build: ./ai-service
+    ports:
+      # We expose port 8000 for local debugging if needed
+      - "8000:8000"
+    volumes:
+      - ./ai-service:/app/ai-service
+    # No database dependency needed for this service
 
 volumes:
   mongo-data:
