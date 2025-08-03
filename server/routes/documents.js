@@ -4,7 +4,11 @@ const auth = require("../middleware/auth");
 const { checkDocumentPermission } = require("../middleware/checkPermission");
 const Document = require("../models/Document");
 const User = require("../models/User");
+const Comment = require('../models/Comment');
+const axios = require("axios");
 const router = express.Router();
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
@@ -17,6 +21,20 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const generateSummary = async (text) => {
+  if (!AI_SERVICE_URL) return "AI service is not configured.";
+  try {
+    // We send a very large chunk of text. A real app might chunk this.
+    const response = await axios.post(`${AI_SERVICE_URL}/summarize`, {
+      text: text.substring(0, 15000),
+    });
+    return response.data.summary;
+  } catch (error) {
+    console.error("Error contacting AI service for summary:", error.message);
+    return "Failed to generate summary.";
+  }
+};
+
 // --- GENERAL ROUTES (NO /:id) ---
 // These must come before routes with /:id to avoid conflicts.
 
@@ -24,17 +42,19 @@ const upload = multer({ storage: storage });
 // @desc    Upload a NEW document (Version 1)
 router.post("/upload", [auth, upload.single("file")], async (req, res) => {
   try {
-    const { filename, path, originalname, mimetype, size } = req.file;
+    const { originalname, mimetype } = req.file;
+    const { category } = req.body;
 
-     const { category } = req.body;
+    let summary = "Summary is not applicable for this file type.";
+    if (mimetype === "text/plain" || mimetype === "application/pdf") {
+      // For this example, we'll use a placeholder for PDF text extraction.
+      // A real app would need a library like 'pdf-parse'.
+      // For now, we'll just "summarize" the filename. A real implementation is complex.
+      const textToSummarize = `This document is named ${originalname}. It is a ${mimetype} file.`;
+      summary = await generateSummary(textToSummarize);
+    }
 
-    const newVersion = {
-      filename,
-      path,
-      originalName: originalname,
-      mimetype,
-      size,
-    };
+    const newVersion = { ...req.file, originalName: originalname };
 
     const newDocument = new Document({
       activeVersion: newVersion,
@@ -42,6 +62,7 @@ router.post("/upload", [auth, upload.single("file")], async (req, res) => {
       uploader: req.user.id,
       collaborators: [req.user.id], // Uploader is automatically a collaborator
       category: category || "General",
+      summary: summary,
     });
 
     const doc = await newDocument.save();
@@ -49,6 +70,31 @@ router.post("/upload", [auth, upload.single("file")], async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
+  }
+});
+
+// --- NEW ROUTE for on-demand sentiment analysis ---
+// @route   GET /:id/sentiment
+// @desc    Calculate and get the sentiment for a document's comments
+router.get('/:id/sentiment', [auth, checkDocumentPermission], async (req, res) => {
+  if (!AI_SERVICE_URL) {
+    return res.status(500).json({ msg: 'AI service is not configured.' });
+  }
+  try {
+    const comments = await Comment.find({ document: req.params.id });
+    const commentTexts = comments.map(c => c.text);
+
+    const response = await axios.post(`${AI_SERVICE_URL}/sentiment`, { comments: commentTexts });
+    const sentimentData = response.data;
+
+    // Update the document in the database with the new sentiment
+    req.document.sentiment = sentimentData;
+    await req.document.save();
+
+    res.json(sentimentData);
+  } catch (error) {
+    console.error('Error contacting AI for sentiment:', error.message);
+    res.status(500).json({ msg: 'Failed to get sentiment.' });
   }
 });
 

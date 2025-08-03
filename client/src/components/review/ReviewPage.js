@@ -20,8 +20,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  LinearProgress,
+  Tooltip,
 } from "@mui/material";
-
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import { motion } from "framer-motion";
 
 const pageVariants = {
@@ -35,6 +37,47 @@ const pageTransition = {
   damping: 20,
 };
 
+const SentimentDisplay = ({ sentiment }) => {
+  if (!sentiment) return null;
+  const { positive, negative, overall } = sentiment;
+  const total = positive + negative;
+  const positiveWidth = total > 0 ? (positive / total) * 100 : 50;
+
+  return (
+    <Box sx={{ p: 2, borderTop: "1px solid #333" }}>
+      <Typography variant="h6" gutterBottom>
+        Comment Sentiment
+      </Typography>
+      <Tooltip
+        title={`Positive: ${positive}% | Negative: ${negative}%`}
+        placement="top"
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <LinearProgress
+            variant="determinate"
+            value={100}
+            sx={{
+              height: 10,
+              borderRadius: 5,
+              flexGrow: 1,
+              "& .MuiLinearProgress-bar": {
+                backgroundColor: "success.main",
+              },
+              backgroundColor: "error.main",
+              "& .MuiLinearProgress-bar1Determinate": {
+                width: `${positiveWidth}%`,
+              },
+            }}
+          />
+        </Box>
+      </Tooltip>
+      <Typography variant="body2" sx={{ textAlign: "center", mt: 1 }}>
+        Overall: <strong>{overall}</strong>
+      </Typography>
+    </Box>
+  );
+};
+
 
 const ReviewPage = () => {
   const { id: documentId } = useParams();
@@ -46,9 +89,30 @@ const ReviewPage = () => {
   const [socket, setSocket] = useState(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [sentiment, setSentiment] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  const handleAnalyzeSentiment = async () => {
+    setIsAnalyzing(true);
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/documents/${documentId}/sentiment`,
+        config
+      );
+      setSentiment(res.data);
+    } catch (err) {
+      console.error("Error analyzing sentiment:", err);
+      setSnackbarMessage("Failed to analyze sentiment.");
+      setShowSnackbar(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const fetchDocumentData = async () => {
     const config = { headers: { "x-auth-token": token } };
@@ -213,6 +277,18 @@ const ReviewPage = () => {
         </Box>
         <Grid container spacing={2}>
           <Grid item xs={12} md={8}>
+            <Paper
+              sx={{ p: 2, mb: 2, borderRadius: 2, border: "1px solid #444" }}
+            >
+              <Typography variant="h6" gutterBottom>
+                <AutoFixHighIcon sx={{ verticalAlign: "middle", mr: 1 }} />
+                AI Summary
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {document.summary}
+              </Typography>
+            </Paper>
+
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Document Version</InputLabel>
               <Select
@@ -303,6 +379,18 @@ const ReviewPage = () => {
                   fullWidth
                 >
                   Add Collaborator
+                </Button>
+              </Box>
+
+              <SentimentDisplay sentiment={sentiment || document.sentiment} />
+              <Box sx={{ p: 2, borderTop: "1px solid #333" }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleAnalyzeSentiment}
+                  disabled={isAnalyzing}
+                  fullWidth
+                >
+                  {isAnalyzing ? "Analyzing..." : "Analyze Comment Sentiment"}
                 </Button>
               </Box>
             </Paper>

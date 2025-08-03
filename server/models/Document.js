@@ -27,6 +27,16 @@ const DocumentSchema = new mongoose.Schema({
     type: String,
     default: "General",
   },
+  summary: {
+    type: String,
+    default: "Summary not yet generated.",
+  },
+  sentiment: {
+    positive: { type: Number, default: 0 },
+    negative: { type: Number, default: 0 },
+    overall: { type: String, default: "NEUTRAL" },
+  },
+
   createdAt: { type: Date, default: Date.now },
 });
 
