@@ -36,7 +36,8 @@ mongoose
 // Define API routes
 app.use("/api/users", require("./routes/users"));
 app.use("/api/documents", require("./routes/documents"));
-app.use("/api/comments", require("./routes/comments")); // Add new comments route
+app.use("/api/comments", require("./routes/comments")); 
+app.use('/api/analytics', require('./routes/analytics')); 
 
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

@@ -17,6 +17,8 @@ import Register from "./components/auth/Register";
 import Dashboard from "./components/dashboard/Dashboard";
 import AllDocuments from './components/dashboard/AllDocuments';
 import ReviewPage from './components/review/ReviewPage';
+import AnalyticsPage from './components/analytics/AnalyticsPage'; 
+
 
 
 // A wrapper for protected routes
@@ -31,7 +33,7 @@ function App() {
 
   return (
     <ThemeProvider theme={darkTheme}>
-      <CssBaseline /> 
+      <CssBaseline />
       <Navbar />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
@@ -58,6 +60,14 @@ function App() {
             element={
               <PrivateRoute>
                 <ReviewPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <PrivateRoute>
+                <AnalyticsPage />
               </PrivateRoute>
             }
           />

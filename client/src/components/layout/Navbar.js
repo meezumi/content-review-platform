@@ -22,6 +22,9 @@ const Navbar = () => {
       <Button component={RouterLink} to="/shared" color="inherit">
         Shared With Me
       </Button>
+      <Button component={RouterLink} to="/analytics" color="inherit">
+        Analytics
+      </Button>
       <Button color="inherit" onClick={onLogout}>
         Logout
       </Button>
