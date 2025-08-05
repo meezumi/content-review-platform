@@ -7,6 +7,7 @@ const User = require("../models/User");
 const Comment = require('../models/Comment');
 const axios = require("axios");
 const router = express.Router();
+const emailQueue = require("../queue");
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
@@ -195,8 +196,20 @@ router.post(
     }
     req.document.collaborators.push(userToAdd.id);
     await req.document.save();
+
+    const inviter = await User.findById(req.user.id);
+    await emailQueue.add("send-invite-email", {
+      to: userToAdd.email,
+      subject: `You've been invited to collaborate on a document!`,
+      html: `
+            <h1>Collaboration Invitation</h1>
+            <p>Hi ${userToAdd.username},</p>
+            <p>${inviter.username} has invited you to review the document: <strong>${req.document.activeVersion.originalName}</strong>.</p>
+            <p>You can access it by logging into your ContentFlow account.</p>
+        `,
+    });
+
     res.json(req.document);
-  }
-);
+  });
 
 module.exports = router;
