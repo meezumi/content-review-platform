@@ -159,6 +159,37 @@ router.post(
     document.activeVersion = newVersion;
     document.status = "In Review";
     await document.save();
+
+    try {
+      const uploader = await User.findById(req.user.id);
+
+      // Find all collaborators to notify (everyone except the person who uploaded)
+      const collaboratorsToNotify = document.collaborators.filter(
+        (collabId) => collabId.toString() !== req.user.id
+      );
+
+      // Fetch user details for each collaborator to get their email
+      const collaboratorUsers = await User.find({
+        _id: { $in: collaboratorsToNotify },
+      });
+
+      for (const user of collaboratorUsers) {
+        await emailQueue.add("send-new-version-email", {
+          to: user.email,
+          subject: `A new version of "${document.activeVersion.originalName}" has been uploaded`,
+          html: `
+                    <h1>New Version Available</h1>
+                    <p>Hi ${user.username},</p>
+                    <p>A new version of the document <strong>${document.activeVersion.originalName}</strong> has been uploaded by ${uploader.username}.</p>
+                    <p>Log in to your ContentFlow account to review the latest changes.</p>
+                `,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to queue new version notification emails:", err);
+      // We don't block the main response if email fails
+    }
+
     res.json(document);
   }
 );
