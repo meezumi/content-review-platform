@@ -136,7 +136,12 @@ router.get("/shared", auth, async (req, res) => {
 // @route   GET /:id
 // @desc    Get a single document by its ID (SECURED)
 router.get("/:id", [auth, checkDocumentPermission], async (req, res) => {
-  // The document is already fetched by the middleware and attached to req
+  // The document is attached by the middleware. Now we populate it.
+  await req.document.populate({
+    path: "collaborators",
+    select: "username email",
+  });
+
   res.json(req.document);
 });
 

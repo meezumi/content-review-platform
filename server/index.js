@@ -7,6 +7,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
+const emailQueue = require("./queue");
 
 // Import Mongoose Models
 const Comment = require("./models/Comment");
@@ -94,6 +95,39 @@ io.on("connection", (socket) => {
 
       // Broadcast to everyone in the specific document room
       io.to(documentId).emit("commentReceived", commentData);
+
+      const mentionRegex = /@\[(.+?)\]\((.+?)\)/g;
+      let match;
+      const mentionedUserIds = new Set();
+
+      while ((match = mentionRegex.exec(text)) !== null) {
+        mentionedUserIds.add(match[2]); // The user ID is in the second capture group
+      }
+
+      if (mentionedUserIds.size > 0) {
+        const document = await Document.findById(documentId);
+        for (const userId of mentionedUserIds) {
+          // Don't notify a user if they mention themselves
+          if (userId === socket.user.id) continue;
+
+          const mentionedUser = await User.findById(userId);
+          if (mentionedUser) {
+            await emailQueue.add("send-mention-email", {
+              to: mentionedUser.email,
+              subject: `You were mentioned in a comment by ${user.username}`,
+              html: `
+                    <h1>You Were Mentioned!</h1>
+                    <p>Hi ${mentionedUser.username},</p>
+                    <p>${user.username} mentioned you in a comment on the document <strong>${document.activeVersion.originalName}</strong>:</p>
+                    <blockquote style="border-left: 2px solid #ccc; padding-left: 1em; margin-left: 1em; color: #555;">
+                        ${text.replace(mentionRegex,(m, name) => `<strong>@${name}</strong>`)}
+                    </blockquote>
+                    <p>Log in to your ContentFlow account to reply.</p>
+                  `
+            });
+          }
+        }
+      }
       console.log(`Broadcasting new comment to room ${documentId}`);
     } catch (err) {
       console.error("Error saving or broadcasting comment:", err);

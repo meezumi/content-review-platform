@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "axios";
+import { MentionsInput, Mention } from "react-mentions";
+import "./mentions-style.css"; 
 import { io } from "socket.io-client";
 import {
   Box,
@@ -25,6 +27,7 @@ import {
 } from "@mui/material";
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import { motion } from "framer-motion";
+
 
 
 const pageVariants = {
@@ -96,6 +99,14 @@ const ReviewPage = () => {
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  const mentionsData = useMemo(() => {
+    if (!document || !document.collaborators) return [];
+    return document.collaborators.map((user) => ({
+      id: user._id,
+      display: user.username,
+    }));
+  }, [document]);
 
   const handleAnalyzeSentiment = async () => {
     setIsAnalyzing(true);
@@ -345,14 +356,23 @@ const ReviewPage = () => {
                 </List>
               </Box>
               <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  label="Add a comment"
+                <MentionsInput
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendComment()}
-                />
+                  onChange={(event) => setNewComment(event.target.value)}
+                  placeholder="Add a comment... @ to mention a user"
+                  className="mentions"
+                  a11ySuggestionsListLabel={"Suggested mentions"}
+                >
+                  <Mention
+                    trigger="@"
+                    data={mentionsData}
+                    markup="@[__display__](__id__)"
+                    style={{
+                      backgroundColor: "#3f51b5",
+                      color: "white",
+                    }}
+                  />
+                </MentionsInput>
                 <Button
                   variant="contained"
                   color="primary"
