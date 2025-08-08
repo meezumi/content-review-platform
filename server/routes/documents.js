@@ -212,6 +212,38 @@ router.put("/:id/status", [auth, checkDocumentPermission], async (req, res) => {
   res.json(req.document);
 });
 
+// @route   PUT /:id/request-changes
+router.put('/:id/request-changes', [auth, checkDocumentPermission], async (req, res) => {
+    try {
+        const document = req.document;
+        document.status = 'Requires Changes';
+        await document.save();
+        
+        // --- NOTIFICATION LOGIC ---
+        const uploader = await User.findById(document.uploader);
+        const reviewer = await User.findById(req.user.id);
+        
+        // Notify the original uploader that changes are needed
+        if (uploader && uploader._id.toString() !== reviewer._id.toString()) {
+             await emailQueue.add('send-changes-requested-email', {
+                to: uploader.email,
+                subject: `Changes requested for "${document.activeVersion.originalName}"`,
+                html: `
+                    <h1>Changes Requested</h1>
+                    <p>Hi ${uploader.username},</p>
+                    <p>${reviewer.username} has requested changes on the document <strong>${document.activeVersion.originalName}</strong>.</p>
+                    <p>Please review the comments, upload a new version, and resubmit for approval.</p>
+                `
+            });
+        }
+
+        res.json(document);
+    } catch (err) {
+         console.error('Error requesting changes:', err);
+         res.status(500).send('Server Error');
+    }
+});
+
 // @route   POST /:id/collaborator
 // @desc    Add a collaborator to a document (SECURED)
 router.post(

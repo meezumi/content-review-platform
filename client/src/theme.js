@@ -8,11 +8,11 @@ export const darkTheme = createTheme({
       main: "#90caf9",
     },
     secondary: {
-      main: "#f48fb1", 
+      main: "#f48fb1",
     },
     background: {
-      default: "#121212", 
-      paper: "#1e1e1e", 
+      default: "#121212",
+      paper: "#1e1e1e",
     },
     text: {
       primary: "#ffffff",
@@ -20,11 +20,14 @@ export const darkTheme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Helvetica", "Arial", sans-serif',
     h4: {
       fontWeight: 700,
     },
     h5: {
+      fontWeight: 600,
+    },
+    h6: { 
       fontWeight: 600,
     },
   },

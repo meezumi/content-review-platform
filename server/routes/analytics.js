@@ -37,6 +37,42 @@ router.get("/docs-by-category", auth, async (req, res) => {
   }
 });
 
+// @route   GET api/analytics/approval-time
+// @desc    Get the average time from creation to approval
+router.get('/approval-time', auth, async (req, res) => {
+    try {
+        const result = await Document.aggregate([
+            { $match: { status: 'Approved' } },
+            {
+                $addFields: {
+                    approvalDate: {
+                        // Find the date of the last update that set the status to Approved
+                        // This is a simplified approach. A more robust solution would store events.
+                        $ifNull: ['$updatedAt', '$createdAt']
+                    }
+                }
+            },
+            {
+                $project: {
+                    timeToApprove: { $subtract: ['$approvalDate', '$createdAt'] }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgTimeToApprove: { $avg: '$timeToApprove' }
+                }
+            }
+        ]);
+
+        const avgMillis = result.length > 0 ? result[0].avgTimeToApprove : 0;
+        res.json({ avgMillis });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 // @route   GET api/analytics/activity-over-time
 // @desc    Get document uploads per day for the last 30 days
 router.get("/activity-over-time", auth, async (req, res) => {

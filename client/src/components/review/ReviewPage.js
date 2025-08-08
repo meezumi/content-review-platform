@@ -100,6 +100,22 @@ const ReviewPage = () => {
   const commentsEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const handleRequestChanges = async () => {
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/documents/${documentId}/request-changes`,
+        {},
+        config
+      );
+      setDocument(res.data);
+      setSnackbarMessage("Changes have been requested.");
+      setShowSnackbar(true);
+    } catch (err) {
+      console.error("Error requesting changes:", err);
+    }
+  };
+
   const mentionsData = useMemo(() => {
     if (!document || !document.collaborators) return [];
     return document.collaborators.map((user) => ({
@@ -282,9 +298,20 @@ const ReviewPage = () => {
             >
               Upload New Version
             </Button>
+
+            <Button
+              variant="outlined"
+              color="warning"
+              sx={{ mr: 2 }}
+              onClick={handleRequestChanges}
+            >
+              Request Changes
+            </Button>
+
             <Button variant="contained" color="success" onClick={handleApprove}>
               Approve Document
             </Button>
+            
           </Box>
         </Box>
         <Grid container spacing={2}>

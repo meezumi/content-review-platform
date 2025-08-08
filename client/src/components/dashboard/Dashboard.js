@@ -16,8 +16,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Grid,
 } from "@mui/material";
 import { motion } from "framer-motion";
+import DocumentCard from "./DocumentCard";
+
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -203,7 +206,15 @@ const Dashboard = () => {
           </Box>
         </Paper>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 2,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
           <Typography variant="h5" sx={{ mr: 2 }}>
             My Documents
           </Typography>
@@ -218,26 +229,13 @@ const Dashboard = () => {
         </Box>
 
         <motion.div variants={listVariants} initial="hidden" animate="visible">
-          <List>
+          <Grid container spacing={3}>
             {filteredDocuments.map((doc) => (
-              <motion.div key={doc._id} variants={itemVariants}>
-                <ListItem component={Paper} sx={{ mb: 1, borderRadius: 2 }}>
-                  <ListItemText
-                    primary={doc.activeVersion?.originalName}
-                    secondary={`Category: ${doc.category}`}
-                  />
-                  {getStatusChip(doc.status)}
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleReviewClick(doc._id)}
-                  >
-                    Review
-                  </Button>
-                </ListItem>
-              </motion.div>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={doc._id}>
+                <DocumentCard doc={doc} onReviewClick={handleReviewClick} />
+              </Grid>
             ))}
-          </List>
+          </Grid>
         </motion.div>
       </Container>
     </motion.div>
