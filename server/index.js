@@ -76,15 +76,26 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} left room ${documentId}`);
   });
 
-  socket.on("newComment", async ({ documentId, text }) => {
+  socket.on("newComment", async ({ documentId, text, type, coordinates }) => {
     try {
       const user = await User.findById(socket.user.id).select("username");
-      const comment = new Comment({
+
+      const newCommentData = {
         text,
         document: documentId,
         author: socket.user.id,
-      });
+        type: type || "General", // Default to 'General' if not provided
+      };
+
+      if (type === "Pinned" && coordinates) {
+        newCommentData.x_coordinate = coordinates.x;
+        newCommentData.y_coordinate = coordinates.y;
+      }
+
+      const comment = new Comment(newCommentData);
       await comment.save();
+
+      const populatedComment = await Comment.findById(comment._id).populate('author', 'username');
 
       const commentData = {
         _id: comment._id,
@@ -94,7 +105,7 @@ io.on("connection", (socket) => {
       };
 
       // Broadcast to everyone in the specific document room
-      io.to(documentId).emit("commentReceived", commentData);
+      io.to(documentId).emit("commentReceived", populatedComment);
 
       const mentionRegex = /@\[(.+?)\]\((.+?)\)/g;
       let match;
@@ -118,12 +129,19 @@ io.on("connection", (socket) => {
               html: `
                     <h1>You Were Mentioned!</h1>
                     <p>Hi ${mentionedUser.username},</p>
-                    <p>${user.username} mentioned you in a comment on the document <strong>${document.activeVersion.originalName}</strong>:</p>
+                    <p>${
+                      user.username
+                    } mentioned you in a comment on the document <strong>${
+                document.activeVersion.originalName
+              }</strong>:</p>
                     <blockquote style="border-left: 2px solid #ccc; padding-left: 1em; margin-left: 1em; color: #555;">
-                        ${text.replace(mentionRegex,(m, name) => `<strong>@${name}</strong>`)}
+                        ${text.replace(
+                          mentionRegex,
+                          (m, name) => `<strong>@${name}</strong>`
+                        )}
                     </blockquote>
                     <p>Log in to your ContentFlow account to reply.</p>
-                  `
+                  `,
             });
           }
         }

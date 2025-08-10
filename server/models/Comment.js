@@ -15,6 +15,15 @@ const CommentSchema = new mongoose.Schema({
     ref: "Document",
     required: true,
   },
+
+  type: {
+    type: String,
+    enum: ["General", "Pinned"],
+    default: "General",
+  },
+  x_coordinate: { type: Number }, // Will store as percentage (0-100)
+  y_coordinate: { type: Number }, // Will store as percentage (0-100)
+
   createdAt: {
     type: Date,
     default: Date.now,

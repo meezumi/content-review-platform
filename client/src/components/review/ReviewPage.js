@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import { MentionsInput, Mention } from "react-mentions";
 import "./mentions-style.css"; 
+import "./document-viewer.css";
 import { io } from "socket.io-client";
 import {
   Box,
@@ -24,11 +25,14 @@ import {
   InputLabel,
   LinearProgress,
   Tooltip,
+  Popover,
 } from "@mui/material";
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import { motion } from "framer-motion";
+import { Document as PdfDocument, Page, pdfjs } from "react-pdf";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 
-
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const pageVariants = {
   initial: { opacity: 0, scale: 0.9 },
@@ -82,6 +86,61 @@ const SentimentDisplay = ({ sentiment }) => {
   );
 };
 
+const DocumentViewer = ({
+  fileUrl,
+  fileType,
+  onDocClick,
+  pinnedComments,
+  onPinClick,
+  activePinId,
+}) => {
+  const [numPages, setNumPages] = useState(null);
+
+  function onDocumentLoadSuccess({ numPages }) {
+    setNumPages(numPages);
+  }
+
+  const handleCanvasClick = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    onDocClick({ x, y });
+  };
+
+  return (
+    <div className="document-viewer-container" onClick={handleCanvasClick}>
+      {fileType.startsWith("image/") && (
+        <img src={fileUrl} alt="review document" />
+      )}
+      {fileType === "application/pdf" && (
+        <PdfDocument file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
+          {Array.from(new Array(numPages), (el, index) => (
+            <Page key={`page_${index + 1}`} pageNumber={index + 1} />
+          ))}
+        </PdfDocument>
+      )}
+      {pinnedComments.map((comment, index) => (
+        <Tooltip key={comment._id} title={comment.text}>
+          <div
+            className={`comment-pin ${
+              comment._id === activePinId ? "active" : ""
+            }`}
+            style={{
+              left: `${comment.x_coordinate}%`,
+              top: `${comment.y_coordinate}%`,
+            }}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent creating a new pin when clicking an existing one
+              onPinClick(comment._id);
+            }}
+          >
+            {index + 1}
+          </div>
+        </Tooltip>
+      ))}
+    </div>
+  );
+};
 
 const ReviewPage = () => {
   const { id: documentId } = useParams();
@@ -95,10 +154,70 @@ const ReviewPage = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [sentiment, setSentiment] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [newPinLocation, setNewPinLocation] = useState(null); // {x, y} for a new pending pin
+  const [popoverAnchor, setPopoverAnchor] = useState(null); // Anchor for the new comment popover
+  const [activePinId, setActivePinId] = useState(null); // To highlight the active pin
 
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const documentViewerRef = useRef(null); // Ref for the viewer container
+
+  const handleDocClick = ({ x, y }) => {
+    // This logic creates a temporary popover to add a new pinned comment
+    const newLocation = { x, y };
+    setNewPinLocation(newLocation);
+
+    // Create a virtual element for the popover to anchor to
+    const virtualElement = {
+      getBoundingClientRect: () => ({
+        width: 0,
+        height: 0,
+        x: (x / 100) * (documentViewerRef.current?.clientWidth || 0),
+        y: (y / 100) * (documentViewerRef.current?.clientHeight || 0),
+        top: (y / 100) * (documentViewerRef.current?.clientHeight || 0),
+        left: (x / 100) * (documentViewerRef.current?.clientWidth || 0),
+        right: (x / 100) * (documentViewerRef.current?.clientWidth || 0),
+        bottom: (y / 100) * (documentViewerRef.current?.clientHeight || 0),
+      }),
+    };
+    setPopoverAnchor(virtualElement);
+  };
+
+  const handleClosePopover = () => {
+    setPopoverAnchor(null);
+    setNewPinLocation(null);
+    setNewComment(""); // Clear comment text on close
+  };
+
+  const handleSendPinnedComment = () => {
+    if (newComment.trim() && newPinLocation && socket) {
+      socket.emit("newComment", {
+        documentId,
+        text: newComment,
+        type: "Pinned",
+        coordinates: newPinLocation,
+      });
+      handleClosePopover();
+    }
+  };
+
+  const handleSendGeneralComment = () => {
+    if (newComment.trim() && socket) {
+      socket.emit("newComment", {
+        documentId,
+        text: newComment,
+        type: "General",
+      });
+      setNewComment("");
+    }
+  };
+
+  // --- FILTER COMMENTS FOR DISPLAY ---
+  const generalComments = comments.filter(
+    (c) => c.type === "General" || !c.type
+  );
+  const pinnedComments = comments.filter((c) => c.type === "Pinned");
 
   const handleRequestChanges = async () => {
     const config = { headers: { "x-auth-token": token } };
@@ -311,7 +430,6 @@ const ReviewPage = () => {
             <Button variant="contained" color="success" onClick={handleApprove}>
               Approve Document
             </Button>
-            
           </Box>
         </Box>
         <Grid container spacing={2}>
@@ -344,18 +462,24 @@ const ReviewPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <Paper sx={{ height: "75vh", p: 1, backgroundColor: "#f5f5f5" }}>
-              {documentUrl && (
-                <iframe
-                  src={documentUrl}
-                  title={activeVersion.originalName}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
+
+            <Paper
+              ref={documentViewerRef}
+              sx={{ height: "75vh", backgroundColor: "#333" }}
+            >
+              {activeVersion && (
+                <DocumentViewer
+                  fileUrl={documentUrl}
+                  fileType={activeVersion.mimetype}
+                  onDocClick={handleDocClick}
+                  pinnedComments={pinnedComments}
+                  onPinClick={setActivePinId}
+                  activePinId={activePinId}
                 />
               )}
             </Paper>
           </Grid>
+
           <Grid item xs={12} md={4}>
             <Paper
               sx={{ height: "85vh", display: "flex", flexDirection: "column" }}
@@ -364,11 +488,44 @@ const ReviewPage = () => {
                 variant="h6"
                 sx={{ p: 2, borderBottom: "1px solid #eee" }}
               >
-                Comments
+                <LocationOnIcon sx={{ verticalAlign: "middle", mr: 1 }} />{" "}
+                Contextual Comments ({pinnedComments.length})
+              </Typography>
+
+              <Box sx={{ overflowY: "auto", p: 2 }}>
+                {/* Display Pinned Comments */}
+                <List>
+                  {pinnedComments.map((comment, index) => (
+                    <ListItem
+                      key={comment._id}
+                      button
+                      selected={comment._id === activePinId}
+                      onClick={() => setActivePinId(comment._id)}
+                    >
+                      <ListItemText
+                        primary={
+                          <strong>
+                            {index + 1}. {comment.author.username}
+                          </strong>
+                        }
+                        secondary={comment.text}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+              <Divider />
+
+              <Typography
+                variant="h6"
+                sx={{ p: 2, borderBottom: "1px solid #333" }}
+              >
+                General Comments
               </Typography>
               <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
+                {/* Display General Comments */}
                 <List>
-                  {comments.map((comment) => (
+                  {generalComments.map((comment) => (
                     <React.Fragment key={comment._id}>
                       <ListItem>
                         <ListItemText
@@ -382,6 +539,7 @@ const ReviewPage = () => {
                   <div ref={commentsEndRef} />
                 </List>
               </Box>
+
               <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
                 <MentionsInput
                   value={newComment}
@@ -400,16 +558,18 @@ const ReviewPage = () => {
                     }}
                   />
                 </MentionsInput>
+
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={handleSendComment}
+                  onClick={handleSendGeneralComment}
                   sx={{ mt: 1 }}
                   fullWidth
                 >
-                  Send
+                  Send General Comment
                 </Button>
               </Box>
+
               {/* --- PERMISSIONS UI --- */}
               <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
                 <Typography variant="h6">Manage Access</Typography>
@@ -444,6 +604,41 @@ const ReviewPage = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        <Popover
+          open={Boolean(popoverAnchor)}
+          anchorEl={popoverAnchor}
+          onClose={handleClosePopover}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Box sx={{ p: 2, width: 300 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Add a comment at this location
+            </Typography>
+            <MentionsInput
+              value={newComment}
+              onChange={(event) => setNewComment(event.target.value)}
+              placeholder="Add a pinned comment..."
+              className="mentions"
+            >
+              <Mention
+                trigger="@"
+                data={mentionsData}
+                markup="@[__display__](__id__)"
+              />
+            </MentionsInput>
+            <Button
+              variant="contained"
+              onClick={handleSendPinnedComment}
+              sx={{ mt: 1 }}
+              fullWidth
+            >
+              Save Pin
+            </Button>
+          </Box>
+        </Popover>
+
         <Snackbar
           open={showSnackbar}
           autoHideDuration={4000}
