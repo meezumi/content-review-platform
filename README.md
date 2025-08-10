@@ -47,8 +47,8 @@ The technology stack is chosen to reflect modern, in-demand skills in the softwa
 *   **User Authentication:** Secure user registration and login.
 *   **File Uploads:** Users can upload various file types for review.
 *   **Version History:** Track and compare different versions of a file.
-<!-- ***(Planned) Multi-step Approval Workflows:** Define custom approval chains for different types of content.
-*   **(Planned) Notifications:** In-app and email notifications for comments and status changes. -->
+*   **Multi-step Approval Workflows:** Define custom approval chains for different types of content.
+*   **Notifications:** In-app and email notifications for comments and status changes.
 
 ---
 
