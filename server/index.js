@@ -16,8 +16,13 @@ const User = require("./models/User");
 const app = express();
 const server = http.createServer(app);
 
+const corsOptions = {
+  origin: "http://localhost:3000", // Allow only our React client to connect
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Socket.IO setup
@@ -76,7 +81,7 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} left room ${documentId}`);
   });
 
-  socket.on("newComment", async ({ documentId, text, type, coordinates }) => {
+  socket.on("newComment", async ({ documentId, text, type, coordinates, pageNumber }) => {
     try {
       const user = await User.findById(socket.user.id).select("username");
 
@@ -90,6 +95,9 @@ io.on("connection", (socket) => {
       if (type === "Pinned" && coordinates) {
         newCommentData.x_coordinate = coordinates.x;
         newCommentData.y_coordinate = coordinates.y;
+        if (pageNumber) {
+          newCommentData.pageNumber = pageNumber; // <-- Save the page number
+        }
       }
 
       const comment = new Comment(newCommentData);

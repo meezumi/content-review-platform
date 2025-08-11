@@ -24,6 +24,8 @@ const CommentSchema = new mongoose.Schema({
   x_coordinate: { type: Number }, // Will store as percentage (0-100)
   y_coordinate: { type: Number }, // Will store as percentage (0-100)
 
+  pageNumber: { type: Number }, // To store which page the pin is on for PDFs
+
   createdAt: {
     type: Date,
     default: Date.now,

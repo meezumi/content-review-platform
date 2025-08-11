@@ -32,7 +32,7 @@ import { motion } from "framer-motion";
 import { Document as PdfDocument, Page, pdfjs } from "react-pdf";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const pageVariants = {
   initial: { opacity: 0, scale: 0.9 },
@@ -100,44 +100,80 @@ const DocumentViewer = ({
     setNumPages(numPages);
   }
 
-  const handleCanvasClick = (event) => {
+  const handlePageClick = (event, pageNumber) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 100;
     const y = ((event.clientY - rect.top) / rect.height) * 100;
-    onDocClick({ x, y });
+    onDocClick({ x, y, pageNumber });
   };
 
   return (
-    <div className="document-viewer-container" onClick={handleCanvasClick}>
+    <div className="document-viewer-container">
       {fileType.startsWith("image/") && (
-        <img src={fileUrl} alt="review document" />
+        <div
+          style={{ position: "relative" }}
+          onClick={(e) => handlePageClick(e, 1)}
+        >
+          <img src={fileUrl} alt="review document" />
+          {pinnedComments.map((comment, index) => (
+            <Tooltip key={comment._id} title={comment.text}>
+              <div
+                className={`comment-pin ${
+                  comment._id === activePinId ? "active" : ""
+                }`}
+                style={{
+                  left: `${comment.x_coordinate}%`,
+                  top: `${comment.y_coordinate}%`,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPinClick(comment._id);
+                }}
+              >
+                {index + 1}
+              </div>
+            </Tooltip>
+          ))}
+        </div>
       )}
       {fileType === "application/pdf" && (
         <PdfDocument file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page key={`page_${index + 1}`} pageNumber={index + 1} />
-          ))}
+          {Array.from(new Array(numPages), (el, index) => {
+            const pageNumber = index + 1;
+            const pinsForThisPage = pinnedComments.filter(
+              (p) => p.pageNumber === pageNumber
+            );
+            return (
+              <div
+                key={`page_container_${pageNumber}`}
+                style={{ position: "relative" }}
+                onClick={(e) => handlePageClick(e, pageNumber)}
+              >
+                <Page pageNumber={pageNumber} />
+                {pinsForThisPage.map((comment, pinIndex) => (
+                  <Tooltip key={comment._id} title={comment.text}>
+                    <div
+                      className={`comment-pin ${
+                        comment._id === activePinId ? "active" : ""
+                      }`}
+                      style={{
+                        left: `${comment.x_coordinate}%`,
+                        top: `${comment.y_coordinate}%`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPinClick(comment._id);
+                      }}
+                    >
+                      {pinIndex + 1}
+                    </div>
+                  </Tooltip>
+                ))}
+              </div>
+            );
+          })}
         </PdfDocument>
       )}
-      {pinnedComments.map((comment, index) => (
-        <Tooltip key={comment._id} title={comment.text}>
-          <div
-            className={`comment-pin ${
-              comment._id === activePinId ? "active" : ""
-            }`}
-            style={{
-              left: `${comment.x_coordinate}%`,
-              top: `${comment.y_coordinate}%`,
-            }}
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent creating a new pin when clicking an existing one
-              onPinClick(comment._id);
-            }}
-          >
-            {index + 1}
-          </div>
-        </Tooltip>
-      ))}
     </div>
   );
 };
@@ -163,9 +199,8 @@ const ReviewPage = () => {
   const fileInputRef = useRef(null);
   const documentViewerRef = useRef(null); // Ref for the viewer container
 
-  const handleDocClick = ({ x, y }) => {
-    // This logic creates a temporary popover to add a new pinned comment
-    const newLocation = { x, y };
+  const handleDocClick = ({ x, y, pageNumber }) => {
+    const newLocation = { x, y, pageNumber };
     setNewPinLocation(newLocation);
 
     // Create a virtual element for the popover to anchor to
@@ -196,7 +231,8 @@ const ReviewPage = () => {
         documentId,
         text: newComment,
         type: "Pinned",
-        coordinates: newPinLocation,
+        coordinates: { x: newPinLocation.x, y: newPinLocation.y },
+        pageNumber: newPinLocation.pageNumber,
       });
       handleClosePopover();
     }
