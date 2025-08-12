@@ -28,6 +28,7 @@ import {
   Popover,
 } from "@mui/material";
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { motion } from "framer-motion";
 import { Document as PdfDocument, Page, pdfjs } from "react-pdf";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -440,16 +441,18 @@ const ReviewPage = () => {
           justifyContent="space-between"
           alignItems="center"
           mb={2}
+          flexWrap="wrap"
+          gap={2}
         >
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
             {document.activeVersion.originalName}
           </Typography>
-          <Box>
+
+          <Box display="flex" gap={2} flexWrap="wrap">
             <Button
               variant="contained"
               color="secondary"
               onClick={() => fileInputRef.current.click()}
-              sx={{ mr: 2 }}
             >
               Upload New Version
             </Button>
@@ -457,7 +460,6 @@ const ReviewPage = () => {
             <Button
               variant="outlined"
               color="warning"
-              sx={{ mr: 2 }}
               onClick={handleRequestChanges}
             >
               Request Changes
@@ -468,6 +470,7 @@ const ReviewPage = () => {
             </Button>
           </Box>
         </Box>
+
         <Grid container spacing={2}>
           <Grid item xs={12} md={8}>
             <Paper
@@ -501,7 +504,7 @@ const ReviewPage = () => {
 
             <Paper
               ref={documentViewerRef}
-              sx={{ height: "75vh", backgroundColor: "#333" }}
+              sx={{ height: "100vh", backgroundColor: "#333", borderRadius: 2 }}
             >
               {activeVersion && (
                 <DocumentViewer
@@ -517,127 +520,156 @@ const ReviewPage = () => {
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Paper
-              sx={{ height: "85vh", display: "flex", flexDirection: "column" }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ p: 2, borderBottom: "1px solid #eee" }}
-              >
-                <LocationOnIcon sx={{ verticalAlign: "middle", mr: 1 }} />{" "}
-                Contextual Comments ({pinnedComments.length})
-              </Typography>
+            <Grid container spacing={2} direction="column">
+              {/* Contextual Comments Section */}
+              <Grid item xs={12}>
+                <Paper
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 2,
+                    borderRadius: 2,
+                    border: "1px solid #444",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ borderBottom: "1px solid #333", pb: 1, mb: 1 }}
+                  >
+                    <LocationOnIcon sx={{ verticalAlign: "middle", mr: 1 }} />
+                    Contextual Comments ({pinnedComments.length})
+                  </Typography>
+                  <Box sx={{ height: "35vh", overflowY: "auto" }}>
+                    <List dense>
+                      {pinnedComments.map((comment, index) => (
+                        <ListItem
+                          key={comment._id}
+                          button
+                          selected={comment._id === activePinId}
+                          onClick={() => setActivePinId(comment._id)}
+                        >
+                          <ListItemText
+                            primary={
+                              <strong>
+                                {index + 1}. {comment.author.username}
+                              </strong>
+                            }
+                            secondary={comment.text}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                </Paper>
+              </Grid>
 
-              <Box sx={{ overflowY: "auto", p: 2 }}>
-                {/* Display Pinned Comments */}
-                <List>
-                  {pinnedComments.map((comment, index) => (
-                    <ListItem
-                      key={comment._id}
-                      button
-                      selected={comment._id === activePinId}
-                      onClick={() => setActivePinId(comment._id)}
+              {/* <Divider /> */}
+
+              {/* General Comments Section */}
+              <Grid item xs={12}>
+                <Paper
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 2,
+                    borderRadius: 2,
+                    border: "1px solid #444",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ borderBottom: "1px solid #333", pb: 1, mb: 1 }}
+                  >
+                    <ChatBubbleOutlineIcon
+                      sx={{ verticalAlign: "middle", mr: 1 }}
+                    />
+                    General Discussion
+                  </Typography>
+                  <Box sx={{ height: "35vh", overflowY: "auto" }}>
+                    <List dense>
+                      {generalComments.map((comment) => (
+                        <React.Fragment key={comment._id}>
+                          <ListItem>
+                            <ListItemText
+                              primary={
+                                <strong>{comment.author.username}</strong>
+                              }
+                              secondary={comment.text}
+                            />
+                          </ListItem>
+                          <Divider />
+                        </React.Fragment>
+                      ))}
+                      <div ref={commentsEndRef} />
+                    </List>
+                  </Box>
+                  <Box sx={{ mt: 2, borderTop: "1px solid #333", pt: 2 }}>
+                    <MentionsInput
+                      value={newComment}
+                      onChange={(event) => setNewComment(event.target.value)}
+                      placeholder="Add a general comment..."
+                      className="mentions"
                     >
-                      <ListItemText
-                        primary={
-                          <strong>
-                            {index + 1}. {comment.author.username}
-                          </strong>
-                        }
-                        secondary={comment.text}
+                      <Mention
+                        trigger="@"
+                        data={mentionsData}
+                        markup="@[__display__](__id__)"
+                        style={{ backgroundColor: "#3f51b5", color: "white" }}
                       />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-              <Divider />
+                    </MentionsInput>
+                    <Button
+                      variant="contained"
+                      onClick={handleSendGeneralComment}
+                      sx={{ mt: 1 }}
+                      fullWidth
+                    >
+                      Send Comment
+                    </Button>
+                  </Box>
+                </Paper>
+              </Grid>
 
-              <Typography
-                variant="h6"
-                sx={{ p: 2, borderBottom: "1px solid #333" }}
-              >
-                General Comments
-              </Typography>
-              <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
-                {/* Display General Comments */}
-                <List>
-                  {generalComments.map((comment) => (
-                    <React.Fragment key={comment._id}>
-                      <ListItem>
-                        <ListItemText
-                          primary={<strong>{comment.author.username}</strong>}
-                          secondary={comment.text}
-                        />
-                      </ListItem>
-                      <Divider />
-                    </React.Fragment>
-                  ))}
-                  <div ref={commentsEndRef} />
-                </List>
-              </Box>
-
-              <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
-                <MentionsInput
-                  value={newComment}
-                  onChange={(event) => setNewComment(event.target.value)}
-                  placeholder="Add a comment... @ to mention a user"
-                  className="mentions"
-                  a11ySuggestionsListLabel={"Suggested mentions"}
-                >
-                  <Mention
-                    trigger="@"
-                    data={mentionsData}
-                    markup="@[__display__](__id__)"
-                    style={{
-                      backgroundColor: "#3f51b5",
-                      color: "white",
-                    }}
-                  />
-                </MentionsInput>
-
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSendGeneralComment}
-                  sx={{ mt: 1 }}
-                  fullWidth
-                >
-                  Send General Comment
-                </Button>
-              </Box>
-
-              {/* --- PERMISSIONS UI --- */}
-              <Box sx={{ p: 2, borderTop: "1px solid #eee" }}>
-                <Typography variant="h6">Manage Access</Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  label="Add user by email"
-                  value={collaboratorEmail}
-                  onChange={(e) => setCollaboratorEmail(e.target.value)}
-                  sx={{ mt: 1, mb: 1 }}
-                />
-                <Button
-                  variant="outlined"
-                  onClick={handleAddCollaborator}
-                  fullWidth
-                >
-                  Add Collaborator
-                </Button>
-              </Box>
-
-              <SentimentDisplay sentiment={sentiment || document.sentiment} />
-              <Box sx={{ p: 2, borderTop: "1px solid #333" }}>
-                <Button
-                  variant="outlined"
-                  onClick={handleAnalyzeSentiment}
-                  disabled={isAnalyzing}
-                  fullWidth
-                >
-                  {isAnalyzing ? "Analyzing..." : "Analyze Comment Sentiment"}
-                </Button>
-              </Box>
-            </Paper>
+              {/* Lower Section for actions */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #444" }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="h6">Manage Access</Typography>
+                      <TextField
+                        fullWidth
+                        variant="outlined"
+                        label="Add user by email"
+                        size="small"
+                        value={collaboratorEmail}
+                        onChange={(e) => setCollaboratorEmail(e.target.value)}
+                        sx={{ mt: 1, mb: 1 }}
+                      />
+                      <Button
+                        variant="outlined"
+                        onClick={handleAddCollaborator}
+                        fullWidth
+                      >
+                        Add Collaborator
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <SentimentDisplay
+                        sentiment={sentiment || document.sentiment}
+                      />
+                      <Button
+                        variant="outlined"
+                        onClick={handleAnalyzeSentiment}
+                        disabled={isAnalyzing}
+                        fullWidth
+                        sx={{ mt: 2 }}
+                      >
+                        {isAnalyzing ? "Analyzing..." : "Analyze Sentiment"}
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Grid>
+            </Grid>
           </Grid>
         </Grid>
 

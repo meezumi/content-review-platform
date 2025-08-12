@@ -6,12 +6,25 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  padding: 16px;
 }
 
-.document-viewer-container img,
+.document-viewer-container img {
+  display: block;
+  max-width: 100%;    /* Will not be wider than its container */
+  max-height: 100%;   /* Will not be taller than its container */
+  width: auto;        /* Maintain aspect ratio */
+  height: auto;       /* Maintain aspect ratio */
+  object-fit: contain; /* Ensures the whole image is visible without being stretched */
+  cursor: crosshair;
+}
+
+.document-viewer-container .react-pdf__Page {
+  margin-bottom: 16px; /* Add space between PDF pages */
+}
 .document-viewer-container .react-pdf__Page__canvas {
   max-width: 100%;
-  height: auto;
+  height: auto !important; /* Override inline styles from the library */
   cursor: crosshair;
 }
 

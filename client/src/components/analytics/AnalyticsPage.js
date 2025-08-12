@@ -29,16 +29,11 @@ const pageVariants = {
 const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
 const StatCard = ({ title, value }) => (
-  <Paper sx={{ p: 2, textAlign: "center", borderRadius: 3, height: "100%" }}>
-    <Typography variant="h6" color="text.secondary">
-      {title}
-    </Typography>
-    <Typography variant="h4" color="primary" sx={{ fontWeight: 700 }}>
-      {value}
-    </Typography>
-  </Paper>
+    <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Typography variant="h6" color="text.secondary">{title}</Typography>
+        <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mt: 1 }}>{value}</Typography>
+    </Paper>
 );
-
 
 const AnalyticsPage = () => {
   const [stats, setStats] = useState({});
@@ -99,21 +94,22 @@ const AnalyticsPage = () => {
       animate="in"
       exit="out"
       variants={pageVariants}
+      transition={pageTransition}
     >
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Typography variant="h4" gutterBottom>
           Analytics Hub
         </Typography>
         <Grid container spacing={3}>
           {/* Stat Cards */}
           <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Documents" value={stats.totalDocs} />
+            <StatCard title="Total Documents" value={stats.totalDocs || 0} />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Users" value={stats.totalUsers} />
+            <StatCard title="Total Users" value={stats.totalUsers || 0} />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Comments" value={stats.totalComments} />
+            <StatCard title="Total Comments" value={stats.totalComments || 0} />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
@@ -123,12 +119,12 @@ const AnalyticsPage = () => {
           </Grid>
 
           {/* Pie Chart */}
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} lg={4}>
             <Paper sx={{ p: 2, height: 400, borderRadius: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Documents by Category
               </Typography>
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="90%">
                 <PieChart>
                   <Pie
                     data={categoryData}
@@ -136,7 +132,7 @@ const AnalyticsPage = () => {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
+                    outerRadius={100}
                     fill="#8884d8"
                     label
                   >
@@ -154,15 +150,15 @@ const AnalyticsPage = () => {
           </Grid>
 
           {/* Line Chart */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} lg={8}>
             <Paper sx={{ p: 2, height: 400, borderRadius: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Upload Activity (Last 30 Days)
               </Typography>
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="90%">
                 <LineChart
                   data={activityData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
