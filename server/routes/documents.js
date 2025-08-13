@@ -9,6 +9,9 @@ const axios = require("axios");
 const router = express.Router();
 const emailQueue = require("../queue");
 
+const fs = require('fs'); // <-- Import the Node.js File System module
+const pdf = require('pdf-parse'); // <-- Import the new pdf-parse library
+
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
 // Configure Multer Storage
@@ -43,17 +46,41 @@ const generateSummary = async (text) => {
 // @desc    Upload a NEW document (Version 1)
 router.post("/upload", [auth, upload.single("file")], async (req, res) => {
   try {
-    const { originalname, mimetype } = req.file;
+    const { originalname, mimetype, path: filePath } = req.file;
     const { category } = req.body;
 
     let summary = "Summary is not applicable for this file type.";
-    if (mimetype === "text/plain" || mimetype === "application/pdf") {
-      // For this example, we'll use a placeholder for PDF text extraction.
-      // A real app would need a library like 'pdf-parse'.
-      // For now, we'll just "summarize" the filename. A real implementation is complex.
-      const textToSummarize = `This document is named ${originalname}. It is a ${mimetype} file.`;
-      summary = await generateSummary(textToSummarize);
+    let extractedText = "";
+
+    // --- NEW: REAL TEXT EXTRACTION LOGIC ---
+    if (mimetype === "application/pdf") {
+      console.log(`Extracting text from PDF: ${filePath}`);
+      const dataBuffer = fs.readFileSync(filePath);
+      try {
+        const pdfData = await pdf(dataBuffer);
+        extractedText = pdfData.text;
+        console.log("PDF text extracted successfully.");
+      } catch (parseError) {
+        console.error("Error parsing PDF:", parseError);
+        extractedText = "Could not extract text from this PDF.";
+      }
+    } else if (mimetype === "text/plain") {
+      extractedText = fs.readFileSync(filePath, "utf8");
     }
+
+    if (extractedText) {
+      console.log("Sending extracted text to AI for summarization...");
+      summary = await generateSummary(extractedText);
+      console.log("Summary received from AI.");
+    }
+
+    // if (mimetype === "text/plain" || mimetype === "application/pdf") {
+    //   // For this example, we'll use a placeholder for PDF text extraction.
+    //   // A real app would need a library like 'pdf-parse'.
+    //   // For now, we'll just "summarize" the filename. A real implementation is complex.
+    //   const textToSummarize = `This document is named ${originalname}. It is a ${mimetype} file.`;
+    //   summary = await generateSummary(textToSummarize);
+    // }
 
     const newVersion = { ...req.file, originalName: originalname };
 
