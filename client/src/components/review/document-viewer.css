@@ -11,11 +11,11 @@
 
 .document-viewer-container img {
   display: block;
-  max-width: 100%;    /* Will not be wider than its container */
-  max-height: 100%;   /* Will not be taller than its container */
-  width: auto;        /* Maintain aspect ratio */
-  height: auto;       /* Maintain aspect ratio */
-  object-fit: contain; /* Ensures the whole image is visible without being stretched */
+  max-width: 100%;    
+  max-height: 100%;   
+  width: auto;        
+  height: auto;       
+  object-fit: contain; 
   cursor: crosshair;
 }
 

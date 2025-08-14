@@ -9,8 +9,10 @@ const axios = require("axios");
 const router = express.Router();
 const emailQueue = require("../queue");
 
-const fs = require('fs'); // <-- Import the Node.js File System module
-const pdf = require('pdf-parse'); // <-- Import the new pdf-parse library
+const fs = require('fs');
+const pdf = require('pdf-parse'); 
+const FormData = require('form-data');
+
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
@@ -39,6 +41,36 @@ const generateSummary = async (text) => {
   }
 };
 
+const extractTextWithOCR = async (filePath) => {
+  console.log("Falling back to OCR for text extraction...");
+  try {
+    const formData = new FormData();
+    formData.append("file", fs.createReadStream(filePath));
+    formData.append("isOverlayRequired", "false");
+    formData.append("apikey", "helloworld"); // This is the free, public API key
+    formData.append("language", "eng");
+
+    const response = await axios.post(
+      "https://api.ocr.space/parse/image",
+      formData,
+      {
+        headers: formData.getHeaders(),
+      }
+    );
+
+    if (response.data && !response.data.IsErroredOnProcessing) {
+      console.log("OCR extraction successful.");
+      return response.data.ParsedResults[0].ParsedText;
+    } else {
+      console.error("OCR API returned an error:", response.data.ErrorMessage);
+      return "OCR extraction failed.";
+    }
+  } catch (error) {
+    console.error("Error during OCR request:", error.message);
+    return "OCR service could not be reached.";
+  }
+};
+
 // --- GENERAL ROUTES (NO /:id) ---
 // These must come before routes with /:id to avoid conflicts.
 
@@ -55,7 +87,9 @@ router.post("/upload", [auth, upload.single("file")], async (req, res) => {
     // --- NEW: REAL TEXT EXTRACTION LOGIC ---
     if (mimetype === "application/pdf") {
       console.log(`Extracting text from PDF: ${filePath}`);
+
       const dataBuffer = fs.readFileSync(filePath);
+
       try {
         const pdfData = await pdf(dataBuffer);
         extractedText = pdfData.text;
@@ -64,14 +98,22 @@ router.post("/upload", [auth, upload.single("file")], async (req, res) => {
         console.error("Error parsing PDF:", parseError);
         extractedText = "Could not extract text from this PDF.";
       }
+      if (extractedText.length < 100) {
+        extractedText = await extractTextWithOCR(filePath);
+      }
+
     } else if (mimetype === "text/plain") {
       extractedText = fs.readFileSync(filePath, "utf8");
+    } else if (mimetype.startsWith("image/")) {
+        extractedText = await extractTextWithOCR(filePath);
     }
 
-    if (extractedText) {
+    if (extractedText && extractedText.length > 20) {
       console.log("Sending extracted text to AI for summarization...");
       summary = await generateSummary(extractedText);
       console.log("Summary received from AI.");
+    } else {
+      summary = "Could not extract enough text to generate a summary.";
     }
 
     // if (mimetype === "text/plain" || mimetype === "application/pdf") {
