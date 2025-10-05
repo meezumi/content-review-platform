@@ -89,4 +89,4 @@ This project is fully containerized, making it easy to set up and run with a sin
 *   There is a lot of empty white space in the pdf viewer section, when the pdf was not that long at all.
 *   The pinned comments made are carrying over new document versions when uploaded, that shouldn't be the case and should be only on the document where the comment was made.
 *   There should be an option to zoom in and zoom out of the pdf or image uploaded, making it easier to navigate in the documents.
-*   In the review page, instead of stacking contextual adn general commends vertically, stacking them horizontally will have better space efficiency on the website.
+*   In the review page, instead of stacking contextual adn general commends vertically, stacking them horizontally will have better space efficiency on the website, picking this up tommorow.
