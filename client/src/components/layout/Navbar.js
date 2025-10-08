@@ -211,7 +211,7 @@ const Navbar = () => {
                 to={item.path}
                 onClick={() => setMobileDrawerOpen(false)}
                 sx={{
-                  borderRadius: 2,
+                  borderRadius: 3,
                   mb: 1,
                   ...(isActivePath(item.path) && {
                     background: "rgba(99, 102, 241, 0.2)",
@@ -224,7 +224,7 @@ const Navbar = () => {
                 <ListItemText primary={item.label} />
               </ListItem>
             ))}
-            <ListItem button onClick={onLogout} sx={{ borderRadius: 2, mt: 2 }}>
+            <ListItem button onClick={onLogout} sx={{ borderRadius: 3, mt: 2 }}>
               <ListItemIcon sx={{ color: "#ec4899" }}>
                 <LogoutIcon />
               </ListItemIcon>

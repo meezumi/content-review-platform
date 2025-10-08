@@ -3,6 +3,12 @@ import axios from "axios";
 import { useSelector } from "react-redux";
 import { Container, Grid, Paper, Typography, Box } from "@mui/material";
 import {
+  Description as DocumentIcon,
+  People as UsersIcon,
+  Chat as CommentsIcon,
+  Schedule as TimeIcon,
+} from "@mui/icons-material";
+import {
   BarChart,
   Bar,
   XAxis,
@@ -28,11 +34,55 @@ const pageVariants = {
 
 const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
-const StatCard = ({ title, value }) => (
-    <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <Typography variant="h6" color="text.secondary">{title}</Typography>
-        <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mt: 1 }}>{value}</Typography>
+const StatCard = ({ title, value, icon }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+  >
+    <Paper sx={{ 
+      p: 3, 
+      textAlign: 'center', 
+      borderRadius: 3,
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      justifyContent: 'center',
+      background: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(20px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+      transition: 'all 0.3s ease-in-out',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+      }
+    }}>
+      {icon && (
+        <Box sx={{ mb: 1, color: 'primary.main', fontSize: '2rem' }}>
+          {icon}
+        </Box>
+      )}
+      <Typography variant="body2" color="text.secondary" sx={{ 
+        fontWeight: 500,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        mb: 1
+      }}>
+        {title}
+      </Typography>
+      <Typography variant="h3" color="primary" sx={{ 
+        fontWeight: 700,
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundClip: 'text',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}>
+        {value}
+      </Typography>
     </Paper>
+  </motion.div>
 );
 
 const AnalyticsPage = () => {
@@ -97,33 +147,85 @@ const AnalyticsPage = () => {
       transition={pageTransition}
     >
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Analytics Hub
-        </Typography>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Typography 
+            variant="h3" 
+            component="h1"
+            sx={{ 
+              mb: 1,
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textAlign: 'center'
+            }}
+          >
+            Analytics Hub
+          </Typography>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              textAlign: 'center', 
+              mb: 4,
+              fontWeight: 400,
+              opacity: 0.8
+            }}
+          >
+            Comprehensive insights into your document workflow
+          </Typography>
+        </motion.div>
         <Grid container spacing={3}>
           {/* Stat Cards */}
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Documents" value={stats.totalDocs || 0} />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Users" value={stats.totalUsers || 0} />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard title="Total Comments" value={stats.totalComments || 0} />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Avg. Approval Time"
-              value={formatDuration(avgApprovalTime)}
-            />
-          </Grid>
+          {[
+            { title: "Total Documents", value: stats.totalDocs || 0, icon: <DocumentIcon /> },
+            { title: "Total Users", value: stats.totalUsers || 0, icon: <UsersIcon /> },
+            { title: "Total Comments", value: stats.totalComments || 0, icon: <CommentsIcon /> },
+            { title: "Avg. Approval Time", value: formatDuration(avgApprovalTime), icon: <TimeIcon /> },
+          ].map((stat, index) => (
+            <Grid item xs={12} sm={6} md={3} key={stat.title}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <StatCard 
+                  title={stat.title}
+                  value={stat.value}
+                  icon={stat.icon}
+                />
+              </motion.div>
+            </Grid>
+          ))}
 
           {/* Pie Chart */}
           <Grid item xs={12} lg={4}>
-            <Paper sx={{ p: 2, height: 400, borderRadius: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Documents by Category
-              </Typography>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <Paper sx={{ 
+                p: 3, 
+                height: 400, 
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+              }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  mb: 2
+                }}>
+                  Documents by Category
+                </Typography>
               <ResponsiveContainer width="100%" height="90%">
                 <PieChart>
                   <Pie
@@ -147,14 +249,32 @@ const AnalyticsPage = () => {
                 </PieChart>
               </ResponsiveContainer>
             </Paper>
+            </motion.div>
           </Grid>
 
           {/* Line Chart */}
           <Grid item xs={12} lg={8}>
-            <Paper sx={{ p: 2, height: 400, borderRadius: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Upload Activity (Last 30 Days)
-              </Typography>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <Paper sx={{ 
+                p: 3, 
+                height: 400, 
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+              }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  mb: 2
+                }}>
+                  Upload Activity (Last 30 Days)
+                </Typography>
               <ResponsiveContainer width="100%" height="90%">
                 <LineChart
                   data={activityData}
@@ -174,6 +294,7 @@ const AnalyticsPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             </Paper>
+            </motion.div>
           </Grid>
         </Grid>
       </Container>

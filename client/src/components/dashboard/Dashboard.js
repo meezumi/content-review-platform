@@ -30,7 +30,27 @@ import {
   Speed as SpeedIcon,
   Groups as GroupsIcon,
   FilterList as FilterIcon,
+  Refresh as RefreshIcon,
+  Edit as EditIcon,
+  CheckCircle as CheckCircleIcon,
+  Pending as PendingIcon,
+  Visibility as VisibilityIcon,
 } from "@mui/icons-material";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  Legend,
+} from "recharts";
 import { motion } from "framer-motion";
 import DocumentCard from "./DocumentCard";
 
@@ -71,6 +91,10 @@ const Dashboard = () => {
   const [filter, setFilter] = useState("All"); // State for filtering list
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [activityData, setActivityData] = useState([]);
+  const [statusDistribution, setStatusDistribution] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const token = useSelector((state) => state.auth.token);
   const navigate = useNavigate();
 
@@ -97,9 +121,68 @@ const Dashboard = () => {
     }
   };
 
+  const fetchDashboardAnalytics = async () => {
+    if (!token) return;
+    const config = { headers: { "x-auth-token": token } };
+    try {
+      const [statsRes, activityRes] = await Promise.all([
+        axios.get("http://localhost:5000/api/analytics/stats", config),
+        axios.get("http://localhost:5000/api/analytics/activity-over-time", config),
+      ]);
+      
+      setDashboardStats(statsRes.data);
+      setActivityData(activityRes.data);
+      
+      // Generate status distribution from current documents
+      const statusCounts = documents.reduce((acc, doc) => {
+        acc[doc.status] = (acc[doc.status] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+        name: status,
+        value: count,
+        color: status === 'Approved' ? '#10b981' : 
+               status === 'Requires Changes' ? '#f59e0b' : '#6366f1'
+      }));
+      
+      setStatusDistribution(statusData);
+    } catch (err) {
+      console.error("Error fetching dashboard analytics", err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchDocuments(), fetchDashboardAnalytics()]);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
     useEffect(() => {
-      if (token) fetchDocuments();
+      if (token) {
+        fetchDocuments();
+        fetchDashboardAnalytics();
+      }
     }, [token]);
+
+    useEffect(() => {
+      // Update status distribution when documents change
+      if (documents.length > 0) {
+        const statusCounts = documents.reduce((acc, doc) => {
+          acc[doc.status] = (acc[doc.status] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+          name: status,
+          value: count,
+          color: status === 'Approved' ? '#10b981' : 
+                 status === 'Requires Changes' ? '#f59e0b' : '#6366f1'
+        }));
+        
+        setStatusDistribution(statusData);
+      }
+    }, [documents]);
 
 
   const onFileChange = (e) => {
@@ -228,22 +311,43 @@ const Dashboard = () => {
     >
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography 
-            variant="h3" 
-            sx={{ 
-              mb: 1,
-              fontWeight: 800,
-              background: "linear-gradient(135deg, #6366f1, #ec4899)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            Dashboard
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            Manage and track your document reviews
-          </Typography>
+        <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                mb: 1,
+                fontWeight: 800,
+                background: "linear-gradient(135deg, #6366f1, #ec4899)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Dashboard
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              Manage and track your document reviews
+            </Typography>
+          </Box>
+          <Tooltip title="Refresh Dashboard">
+            <IconButton 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              sx={{
+                background: "rgba(99, 102, 241, 0.1)",
+                "&:hover": { background: "rgba(99, 102, 241, 0.2)" }
+              }}
+            >
+              <RefreshIcon sx={{ 
+                color: "#6366f1",
+                animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' }
+                }
+              }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         {/* Stats Cards */}
@@ -292,6 +396,117 @@ const Dashboard = () => {
               </motion.div>
             </Grid>
           ))}
+        </Grid>
+
+        {/* Interactive Dashboard Charts */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* Activity Chart */}
+          <Grid item xs={12} lg={8}>
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.3 }}
+            >
+              <Paper sx={{ p: 3, height: 400 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Document Activity (Last 30 Days)
+                  </Typography>
+                  <TrendingIcon sx={{ color: '#6366f1' }} />
+                </Box>
+                <ResponsiveContainer width="100%" height="90%">
+                  <AreaChart data={activityData}>
+                    <defs>
+                      <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="date" stroke="rgba(255,255,255,0.7)" />
+                    <YAxis stroke="rgba(255,255,255,0.7)" />
+                    <RechartsTooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(0,0,0,0.8)', 
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="documents"
+                      stroke="#6366f1"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorUv)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Paper>
+            </motion.div>
+          </Grid>
+
+          {/* Status Distribution */}
+          <Grid item xs={12} lg={4}>
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.4 }}
+            >
+              <Paper sx={{ p: 3, height: 400 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Document Status
+                  </Typography>
+                  <CheckCircleIcon sx={{ color: '#10b981' }} />
+                </Box>
+                <ResponsiveContainer width="100%" height="80%">
+                  <PieChart>
+                    <Pie
+                      data={statusDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {statusDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(0,0,0,0.8)', 
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <Box sx={{ mt: 2 }}>
+                  {statusDistribution.map((item, index) => (
+                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box 
+                        sx={{ 
+                          width: 12, 
+                          height: 12, 
+                          borderRadius: '50%', 
+                          backgroundColor: item.color, 
+                          mr: 1 
+                        }} 
+                      />
+                      <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                        {item.name}: {item.value}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            </motion.div>
+          </Grid>
         </Grid>
 
         {/* Upload Section */}
@@ -409,7 +624,7 @@ const Dashboard = () => {
                     value={uploadProgress}
                     sx={{
                       height: 8,
-                      borderRadius: 4,
+                      borderRadius: 1.5,
                       background: "rgba(99, 102, 241, 0.1)",
                       "& .MuiLinearProgress-bar": {
                         background: "linear-gradient(90deg, #6366f1, #ec4899)",
@@ -461,6 +676,94 @@ const Dashboard = () => {
             />
           ))}
         </Box>
+
+        {/* Quick Actions */}
+        <motion.div
+          variants={itemVariants}
+          initial="hidden"
+          animate="visible"
+          transition={{ delay: 0.5 }}
+        >
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+              Quick Actions
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<VisibilityIcon />}
+                  onClick={() => navigate('/shared')}
+                  sx={{ 
+                    py: 1.5,
+                    borderColor: 'rgba(99, 102, 241, 0.5)',
+                    '&:hover': {
+                      borderColor: '#6366f1',
+                      background: 'rgba(99, 102, 241, 0.1)'
+                    }
+                  }}
+                >
+                  View All Documents
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => setFilter('In Review')}
+                  sx={{ 
+                    py: 1.5,
+                    borderColor: 'rgba(236, 72, 153, 0.5)',
+                    '&:hover': {
+                      borderColor: '#ec4899',
+                      background: 'rgba(236, 72, 153, 0.1)'
+                    }
+                  }}
+                >
+                  Review Pending
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<CheckCircleIcon />}
+                  onClick={() => setFilter('Approved')}
+                  sx={{ 
+                    py: 1.5,
+                    borderColor: 'rgba(16, 185, 129, 0.5)',
+                    '&:hover': {
+                      borderColor: '#10b981',
+                      background: 'rgba(16, 185, 129, 0.1)'
+                    }
+                  }}
+                >
+                  View Approved
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<PendingIcon />}
+                  onClick={() => navigate('/analytics')}
+                  sx={{ 
+                    py: 1.5,
+                    borderColor: 'rgba(6, 182, 212, 0.5)',
+                    '&:hover': {
+                      borderColor: '#06b6d4',
+                      background: 'rgba(6, 182, 212, 0.1)'
+                    }
+                  }}
+                >
+                  View Analytics
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+        </motion.div>
 
         {/* Documents Grid */}
         <motion.div variants={listVariants} initial="hidden" animate="visible">

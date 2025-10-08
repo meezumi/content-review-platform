@@ -15,6 +15,10 @@ const CommentSchema = new mongoose.Schema({
     ref: "Document",
     required: true,
   },
+  version: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: false, // Make it optional for backward compatibility
+  },
 
   type: {
     type: String,

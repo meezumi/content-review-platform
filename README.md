@@ -84,9 +84,32 @@ This project is fully containerized, making it easy to set up and run with a sin
     *   The **Backend** server will be running on port `5000`.
     *   The **MongoDB** database will be accessible on port `27017`.
 
-### Known Bugs need to work on (dated - Aug 14 )
+## Recent Updates (Oct 2025)
 
-*   There is a lot of empty white space in the pdf viewer section, when the pdf was not that long at all.
-*   The pinned comments made are carrying over new document versions when uploaded, that shouldn't be the case and should be only on the document where the comment was made.
-*   There should be an option to zoom in and zoom out of the pdf or image uploaded, making it easier to navigate in the documents.
-*   In the review page, instead of stacking contextual adn general commends vertically, stacking them horizontally will have better space efficiency on the website, picking this up tommorow.
+### ✨ Major UI/UX Overhaul
+*   **Modern Glassmorphism Design**: Complete redesign with blurred transparent backgrounds and gradient accents
+*   **Responsive Navigation**: Sticky navigation bar with scroll effects and mobile support
+*   **Landing Page**: Professional landing page with feature showcase and pricing sections
+*   **Enhanced Authentication**: Improved login/register forms with password strength indicators
+*   **Dashboard Redesign**: Stats cards, enhanced upload interface, and animated document cards
+*   **Professional Footer**: Complete footer with links, social media, and company information
+
+### Known Issues & Roadmap (Updated Oct 8, 2025)
+
+#### 🐛 Critical Bugs
+*   **PDF Viewer Layout**: Excessive white space in PDF viewer when document is short
+*   **Comment Persistence**: Pinned comments carry over to new document versions (should be version-specific)
+*   **Upload Redirect Bug**: User gets logged out and redirected to white screen after uploading new version
+*   **Layout Efficiency**: Contextual and general comments stacked vertically instead of horizontal layout
+
+#### 🚀 Priority Enhancements
+*   **Zoom Controls**: Add zoom in/out functionality for PDF and image documents
+*   **UI Consistency**: Update remaining components (ReviewPage, Analytics) to match new design system
+*   **Mobile Optimization**: Improve mobile experience for document viewing
+*   **Performance**: Optimize large document loading and rendering
+
+#### 📋 Future Features
+*   **Real-time Cursors**: Show other users' cursors during collaborative editing
+*   **Advanced Annotations**: Text highlighting, shapes, and drawing tools
+*   **Keyboard Shortcuts**: Power user shortcuts for common actions
+*   **Dark/Light Mode**: Theme switching capability

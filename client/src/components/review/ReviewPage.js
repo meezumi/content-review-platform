@@ -26,6 +26,7 @@ import {
   LinearProgress,
   Tooltip,
   Popover,
+  Chip,
 } from "@mui/material";
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -96,10 +97,29 @@ const DocumentViewer = ({
   activePinId,
 }) => {
   const [numPages, setNumPages] = useState(null);
+  const [scale, setScale] = useState(1.0);
+  const [pageWidth, setPageWidth] = useState(null);
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
   }
+
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(prev + 0.25, 3.0));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(prev - 0.25, 0.25));
+  };
+
+  const handleResetZoom = () => {
+    setScale(1.0);
+  };
+
+  const handleFitToWidth = () => {
+    // This will be handled by CSS and the container width
+    setScale('fit-width');
+  };
 
   const handlePageClick = (event, pageNumber) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -109,72 +129,170 @@ const DocumentViewer = ({
   };
 
   return (
-    <div className="document-viewer-container">
-      {fileType.startsWith("image/") && (
-        <div
-          style={{ position: "relative" }}
-          onClick={(e) => handlePageClick(e, 1)}
+    <div className="document-viewer-wrapper">
+      {/* Zoom Controls */}
+      <Box 
+        sx={{ 
+          position: "absolute", 
+          top: 16, 
+          right: 16, 
+          zIndex: 100,
+          display: "flex",
+          gap: 1,
+          background: "rgba(0, 0, 0, 0.7)",
+          borderRadius: 2,
+          p: 1
+        }}
+      >
+        <Tooltip title="Zoom Out">
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={handleZoomOut}
+            disabled={scale <= 0.25}
+            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
+          >
+            −
+          </Button>
+        </Tooltip>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            alignSelf: "center", 
+            color: "white", 
+            minWidth: 45, 
+            textAlign: "center" 
+          }}
         >
-          <img src={fileUrl} alt="review document" />
-          {pinnedComments.map((comment, index) => (
-            <Tooltip key={comment._id} title={comment.text}>
-              <div
-                className={`comment-pin ${
-                  comment._id === activePinId ? "active" : ""
-                }`}
-                style={{
-                  left: `${comment.x_coordinate}%`,
-                  top: `${comment.y_coordinate}%`,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPinClick(comment._id);
-                }}
-              >
-                {index + 1}
-              </div>
-            </Tooltip>
-          ))}
-        </div>
-      )}
-      {fileType === "application/pdf" && (
-        <PdfDocument file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
-          {Array.from(new Array(numPages), (el, index) => {
-            const pageNumber = index + 1;
-            const pinsForThisPage = pinnedComments.filter(
-              (p) => p.pageNumber === pageNumber
-            );
-            return (
-              <div
-                key={`page_container_${pageNumber}`}
-                style={{ position: "relative" }}
-                onClick={(e) => handlePageClick(e, pageNumber)}
-              >
-                <Page pageNumber={pageNumber} />
-                {pinsForThisPage.map((comment, pinIndex) => (
-                  <Tooltip key={comment._id} title={comment.text}>
-                    <div
-                      className={`comment-pin ${
-                        comment._id === activePinId ? "active" : ""
-                      }`}
-                      style={{
-                        left: `${comment.x_coordinate}%`,
-                        top: `${comment.y_coordinate}%`,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPinClick(comment._id);
-                      }}
-                    >
-                      {pinIndex + 1}
-                    </div>
-                  </Tooltip>
-                ))}
-              </div>
-            );
-          })}
-        </PdfDocument>
-      )}
+          {scale === 'fit-width' ? 'Fit' : `${Math.round(scale * 100)}%`}
+        </Typography>
+        <Tooltip title="Zoom In">
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={handleZoomIn}
+            disabled={scale >= 3.0}
+            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
+          >
+            +
+          </Button>
+        </Tooltip>
+        <Tooltip title="Reset Zoom">
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={handleResetZoom}
+            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
+          >
+            ⟲
+          </Button>
+        </Tooltip>
+        <Tooltip title="Fit to Width">
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={handleFitToWidth}
+            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
+          >
+            ⟷
+          </Button>
+        </Tooltip>
+      </Box>
+
+      <div className="document-viewer-container">
+        {fileType.startsWith("image/") && (
+          <div
+            style={{ 
+              position: "relative",
+              transform: scale === 'fit-width' ? 'none' : `scale(${scale})`,
+              transformOrigin: "top center",
+              transition: "transform 0.3s ease"
+            }}
+            onClick={(e) => handlePageClick(e, 1)}
+          >
+            <img 
+              src={fileUrl} 
+              alt="review document" 
+              style={{
+                maxWidth: scale === 'fit-width' ? '100%' : 'none',
+                width: scale === 'fit-width' ? '100%' : 'auto'
+              }}
+            />
+            {pinnedComments.map((comment, index) => (
+              <Tooltip key={comment._id} title={comment.text}>
+                <div
+                  className={`comment-pin ${
+                    comment._id === activePinId ? "active" : ""
+                  }`}
+                  style={{
+                    left: `${comment.x_coordinate}%`,
+                    top: `${comment.y_coordinate}%`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPinClick(comment._id);
+                  }}
+                >
+                  {index + 1}
+                </div>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+        {fileType === "application/pdf" && (
+          <div 
+            style={{
+              transform: scale === 'fit-width' ? 'none' : `scale(${scale})`,
+              transformOrigin: "top center",
+              transition: "transform 0.3s ease"
+            }}
+          >
+            <PdfDocument file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
+              {Array.from(new Array(numPages), (el, index) => {
+                const pageNumber = index + 1;
+                const pinsForThisPage = pinnedComments.filter(
+                  (p) => p.pageNumber === pageNumber
+                );
+                return (
+                  <div
+                    key={`page_container_${pageNumber}`}
+                    style={{ 
+                      position: "relative",
+                      marginBottom: pageNumber < numPages ? 16 : 0
+                    }}
+                    onClick={(e) => handlePageClick(e, pageNumber)}
+                  >
+                    <Page 
+                      pageNumber={pageNumber}
+                      width={scale === 'fit-width' ? pageWidth : undefined}
+                      scale={scale === 'fit-width' ? undefined : scale}
+                    />
+                    {pinsForThisPage.map((comment, pinIndex) => (
+                      <Tooltip key={comment._id} title={comment.text}>
+                        <div
+                          className={`comment-pin ${
+                            comment._id === activePinId ? "active" : ""
+                          }`}
+                          style={{
+                            left: `${comment.x_coordinate}%`,
+                            top: `${comment.y_coordinate}%`,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPinClick(comment._id);
+                          }}
+                        >
+                          {pinIndex + 1}
+                        </div>
+                      </Tooltip>
+                    ))}
+                  </div>
+                );
+              })}
+            </PdfDocument>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -194,6 +312,7 @@ const ReviewPage = () => {
   const [newPinLocation, setNewPinLocation] = useState(null); // {x, y} for a new pending pin
   const [popoverAnchor, setPopoverAnchor] = useState(null); // Anchor for the new comment popover
   const [activePinId, setActivePinId] = useState(null); // To highlight the active pin
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(false); // Control auto-scroll behavior
 
   const token = useSelector((state) => state.auth.token);
   const commentsEndRef = useRef(null);
@@ -234,7 +353,9 @@ const ReviewPage = () => {
         type: "Pinned",
         coordinates: { x: newPinLocation.x, y: newPinLocation.y },
         pageNumber: newPinLocation.pageNumber,
+        version: activeVersionId,
       });
+      setShouldAutoScroll(true); // Trigger auto-scroll when sending pinned comment
       handleClosePopover();
     }
   };
@@ -245,8 +366,10 @@ const ReviewPage = () => {
         documentId,
         text: newComment,
         type: "General",
+        version: activeVersionId,
       });
       setNewComment("");
+      setShouldAutoScroll(true); // Trigger auto-scroll when sending general comment
     }
   };
 
@@ -306,8 +429,11 @@ const ReviewPage = () => {
         config
       );
       setDocument(docRes.data);
-      if (docRes.data.versions && docRes.data.versions.length > 0) {
-        setActiveVersionId(docRes.data.versions[0]._id);
+      // Always set the active version ID - prefer activeVersion, fallback to latest version
+      const versionId = docRes.data.activeVersion?._id || 
+                       (docRes.data.versions && docRes.data.versions.length > 0 ? docRes.data.versions[0]._id : null);
+      if (versionId) {
+        setActiveVersionId(versionId);
       }
       const commentsRes = await axios.get(
         `http://localhost:5000/api/comments/${documentId}`,
@@ -328,9 +454,10 @@ const ReviewPage = () => {
     const newSocket = io("http://localhost:5000", { auth: { token } });
     setSocket(newSocket);
     newSocket.emit("joinRoom", documentId);
-    newSocket.on("commentReceived", (comment) =>
-      setComments((prev) => [...prev, comment])
-    );
+    newSocket.on("commentReceived", (comment) => {
+      setComments((prev) => [...prev, comment]);
+      setShouldAutoScroll(true); // Trigger auto-scroll for new comments
+    });
     return () => {
       newSocket.emit("leaveRoom", documentId);
       newSocket.disconnect();
@@ -338,13 +465,18 @@ const ReviewPage = () => {
   }, [documentId, token]);
 
   useEffect(() => {
-    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [comments]);
+    // Only auto-scroll when shouldAutoScroll is true (new comments added)
+    if (shouldAutoScroll && commentsEndRef.current) {
+      commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
+      setShouldAutoScroll(false); // Reset after scrolling
+    }
+  }, [comments, shouldAutoScroll]);
 
   const handleSendComment = () => {
     if (newComment.trim() && socket) {
-      socket.emit("newComment", { documentId, text: newComment });
+      socket.emit("newComment", { documentId, text: newComment, version: activeVersionId });
       setNewComment("");
+      setShouldAutoScroll(true); // Trigger auto-scroll when sending comment
     }
   };
 
@@ -374,16 +506,40 @@ const ReviewPage = () => {
       headers: { "Content-Type": "multipart/form-data", "x-auth-token": token },
     };
     try {
-      await axios.post(
+      const response = await axios.post(
         `http://localhost:5000/api/documents/${documentId}/version`,
         formData,
         config
       );
+      console.log("Upload response:", response.data);
       setSnackbarMessage("New version uploaded successfully!");
       setShowSnackbar(true);
-      fetchDocumentData(); // Re-fetch all data to get the latest state
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Small delay to ensure server has processed everything
+      setTimeout(() => {
+        fetchDocumentData(); // Re-fetch all data to get the latest state
+      }, 500);
+      
     } catch (err) {
       console.error("Error uploading new version:", err);
+      
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        setSnackbarMessage("Authentication error. Please log in again.");
+        // Don't automatically logout, let user handle it
+      } else if (err.response?.status === 403) {
+        setSnackbarMessage("You don't have permission to upload a new version.");
+      } else if (err.response?.status >= 500) {
+        setSnackbarMessage("Server error. Please try again later.");
+      } else {
+        setSnackbarMessage("Upload failed. Please try again.");
+      }
+      setShowSnackbar(true);
     }
   };
 
@@ -474,7 +630,7 @@ const ReviewPage = () => {
         <Grid container spacing={2}>
           <Grid item xs={12} md={8}>
             <Paper
-              sx={{ p: 2, mb: 2, borderRadius: 2, border: "1px solid #444" }}
+              sx={{ p: 2, mb: 2, borderRadius: 3, border: "1px solid #444" }}
             >
               <Typography variant="h6" gutterBottom>
                 <AutoFixHighIcon sx={{ verticalAlign: "middle", mr: 1 }} />
@@ -504,7 +660,7 @@ const ReviewPage = () => {
 
             <Paper
               ref={documentViewerRef}
-              sx={{ height: "100vh", backgroundColor: "#333", borderRadius: 2 }}
+              sx={{ height: "100vh", backgroundColor: "#333", borderRadius: 3 }}
             >
               {activeVersion && (
                 <DocumentViewer
@@ -520,7 +676,8 @@ const ReviewPage = () => {
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Grid container spacing={2} direction="column">
+            {/* Comments Section - Horizontal Layout */}
+            <Grid container spacing={2} sx={{ height: "100vh" }}>
               {/* Contextual Comments Section */}
               <Grid item xs={12}>
                 <Paper
@@ -528,42 +685,109 @@ const ReviewPage = () => {
                     display: "flex",
                     flexDirection: "column",
                     p: 2,
-                    borderRadius: 2,
-                    border: "1px solid #444",
+                    borderRadius: 3,
+                    background: "rgba(255, 255, 255, 0.05)",
+                    backdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    height: "40vh",
                   }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{ borderBottom: "1px solid #333", pb: 1, mb: 1 }}
-                  >
-                    <LocationOnIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-                    Contextual Comments ({pinnedComments.length})
-                  </Typography>
-                  <Box sx={{ height: "35vh", overflowY: "auto" }}>
-                    <List dense>
+                  <Box sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    mb: 2,
+                    pb: 1,
+                    borderBottom: "1px solid rgba(255, 255, 255, 0.1)"
+                  }}>
+                    <LocationOnIcon sx={{ mr: 1, color: "#6366f1" }} />
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Contextual Comments
+                    </Typography>
+                    <Chip 
+                      label={pinnedComments.length} 
+                      size="small" 
+                      sx={{ 
+                        ml: "auto",
+                        background: "rgba(99, 102, 241, 0.2)",
+                        color: "#6366f1"
+                      }} 
+                    />
+                  </Box>
+                  <Box sx={{ flexGrow: 1, overflowY: "auto", mb: 2 }}>
+                    <List dense sx={{ py: 0 }}>
                       {pinnedComments.map((comment, index) => (
                         <ListItem
                           key={comment._id}
                           button
                           selected={comment._id === activePinId}
                           onClick={() => setActivePinId(comment._id)}
-                        >
-                          <ListItemText
-                            primary={
-                              <strong>
-                                {index + 1}. {comment.author.username}
-                              </strong>
+                          sx={{
+                            borderRadius: 3,
+                            mb: 1,
+                            background: comment._id === activePinId 
+                              ? "rgba(99, 102, 241, 0.2)" 
+                              : "rgba(255, 255, 255, 0.02)",
+                            "&:hover": {
+                              background: "rgba(99, 102, 241, 0.1)",
                             }
-                            secondary={comment.text}
-                          />
+                          }}
+                        >
+                          <Box sx={{ 
+                            display: "flex", 
+                            alignItems: "center", 
+                            width: "100%"
+                          }}>
+                            <Chip
+                              label={index + 1}
+                              size="small"
+                              sx={{
+                                mr: 1,
+                                minWidth: 28,
+                                background: "#6366f1",
+                                color: "white"
+                              }}
+                            />
+                            <ListItemText
+                              primary={
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                  {comment.author.username}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                  sx={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical"
+                                  }}
+                                >
+                                  {comment.text}
+                                </Typography>
+                              }
+                            />
+                          </Box>
                         </ListItem>
                       ))}
+                      {pinnedComments.length === 0 && (
+                        <Box sx={{ 
+                          textAlign: "center", 
+                          py: 4,
+                          color: "text.secondary"
+                        }}>
+                          <LocationOnIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                          <Typography variant="body2">
+                            Click on the document to add contextual comments
+                          </Typography>
+                        </Box>
+                      )}
                     </List>
                   </Box>
                 </Paper>
               </Grid>
-
-              {/* <Divider /> */}
 
               {/* General Comments Section */}
               <Grid item xs={12}>
@@ -572,55 +796,122 @@ const ReviewPage = () => {
                     display: "flex",
                     flexDirection: "column",
                     p: 2,
-                    borderRadius: 2,
-                    border: "1px solid #444",
+                    borderRadius: 3,
+                    background: "rgba(255, 255, 255, 0.05)",
+                    backdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    height: "40vh",
                   }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{ borderBottom: "1px solid #333", pb: 1, mb: 1 }}
-                  >
-                    <ChatBubbleOutlineIcon
-                      sx={{ verticalAlign: "middle", mr: 1 }}
+                  <Box sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    mb: 2,
+                    pb: 1,
+                    borderBottom: "1px solid rgba(255, 255, 255, 0.1)"
+                  }}>
+                    <ChatBubbleOutlineIcon sx={{ mr: 1, color: "#ec4899" }} />
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      General Discussion
+                    </Typography>
+                    <Chip 
+                      label={generalComments.length} 
+                      size="small" 
+                      sx={{ 
+                        ml: "auto",
+                        background: "rgba(236, 72, 153, 0.2)",
+                        color: "#ec4899"
+                      }} 
                     />
-                    General Discussion
-                  </Typography>
-                  <Box sx={{ height: "35vh", overflowY: "auto" }}>
-                    <List dense>
+                  </Box>
+                  <Box sx={{ flexGrow: 1, overflowY: "auto", mb: 2 }}>
+                    <List dense sx={{ py: 0 }}>
                       {generalComments.map((comment) => (
-                        <React.Fragment key={comment._id}>
-                          <ListItem>
-                            <ListItemText
-                              primary={
-                                <strong>{comment.author.username}</strong>
-                              }
-                              secondary={comment.text}
-                            />
-                          </ListItem>
-                          <Divider />
-                        </React.Fragment>
+                        <ListItem
+                          key={comment._id}
+                          sx={{
+                            borderRadius: 3,
+                            mb: 1,
+                            background: "rgba(255, 255, 255, 0.02)",
+                            "&:hover": {
+                              background: "rgba(236, 72, 153, 0.1)",
+                            }
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                {comment.author.username}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="body2" color="text.secondary">
+                                {comment.text}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
                       ))}
+                      {generalComments.length === 0 && (
+                        <Box sx={{ 
+                          textAlign: "center", 
+                          py: 4,
+                          color: "text.secondary"
+                        }}>
+                          <ChatBubbleOutlineIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                          <Typography variant="body2">
+                            Start a general discussion about this document
+                          </Typography>
+                        </Box>
+                      )}
                       <div ref={commentsEndRef} />
                     </List>
                   </Box>
-                  <Box sx={{ mt: 2, borderTop: "1px solid #333", pt: 2 }}>
+                  <Box sx={{ borderTop: "1px solid rgba(255, 255, 255, 0.1)", pt: 2 }}>
                     <MentionsInput
                       value={newComment}
                       onChange={(event) => setNewComment(event.target.value)}
                       placeholder="Add a general comment..."
                       className="mentions"
+                      style={{
+                        control: {
+                          backgroundColor: "rgba(255, 255, 255, 0.05)",
+                          fontSize: 14,
+                          fontWeight: 'normal',
+                          borderRadius: 3,
+                        },
+                        highlighter: {
+                          padding: 12,
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 3,
+                        },
+                        input: {
+                          padding: 12,
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 3,
+                          color: 'white',
+                          backgroundColor: 'transparent',
+                        },
+                      }}
                     >
                       <Mention
                         trigger="@"
                         data={mentionsData}
                         markup="@[__display__](__id__)"
-                        style={{ backgroundColor: "#3f51b5", color: "white" }}
+                        style={{ backgroundColor: "#6366f1", color: "white", borderRadius: 12 }}
                       />
                     </MentionsInput>
                     <Button
                       variant="contained"
                       onClick={handleSendGeneralComment}
-                      sx={{ mt: 1 }}
+                      disabled={!newComment.trim()}
+                      sx={{ 
+                        mt: 1,
+                        background: "linear-gradient(135deg, #ec4899, #be185d)",
+                        "&:hover": {
+                          background: "linear-gradient(135deg, #db2777, #9d174d)",
+                        }
+                      }}
                       fullWidth
                     >
                       Send Comment
@@ -629,12 +920,21 @@ const ReviewPage = () => {
                 </Paper>
               </Grid>
 
-              {/* Lower Section for actions */}
+              {/* Actions Section */}
               <Grid item xs={12}>
-                <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #444" }}>
-                  <Grid container spacing={2}>
+                <Paper sx={{ 
+                  p: 2, 
+                  borderRadius: 3,
+                  background: "rgba(255, 255, 255, 0.05)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  height: "20vh"
+                }}>
+                  <Grid container spacing={2} sx={{ height: "100%" }}>
                     <Grid item xs={12} md={6}>
-                      <Typography variant="h6">Manage Access</Typography>
+                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Manage Access
+                      </Typography>
                       <TextField
                         fullWidth
                         variant="outlined"
@@ -642,29 +942,39 @@ const ReviewPage = () => {
                         size="small"
                         value={collaboratorEmail}
                         onChange={(e) => setCollaboratorEmail(e.target.value)}
-                        sx={{ mt: 1, mb: 1 }}
+                        sx={{ mb: 1 }}
                       />
                       <Button
                         variant="outlined"
                         onClick={handleAddCollaborator}
                         fullWidth
+                        size="small"
                       >
                         Add Collaborator
                       </Button>
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <SentimentDisplay
-                        sentiment={sentiment || document.sentiment}
-                      />
+                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        AI Analysis
+                      </Typography>
                       <Button
-                        variant="outlined"
+                        variant="contained"
                         onClick={handleAnalyzeSentiment}
                         disabled={isAnalyzing}
                         fullWidth
-                        sx={{ mt: 2 }}
+                        startIcon={<AutoFixHighIcon />}
+                        sx={{
+                          background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                          "&:hover": {
+                            background: "linear-gradient(135deg, #5855eb, #7c3aed)",
+                          }
+                        }}
                       >
                         {isAnalyzing ? "Analyzing..." : "Analyze Sentiment"}
                       </Button>
+                      {sentiment && (
+                        <SentimentDisplay sentiment={sentiment} />
+                      )}
                     </Grid>
                   </Grid>
                 </Paper>

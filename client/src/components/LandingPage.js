@@ -182,7 +182,7 @@ const LandingPage = () => {
                     position: "relative",
                     background: "rgba(255, 255, 255, 0.05)",
                     backdropFilter: "blur(20px)",
-                    borderRadius: 4,
+                    borderRadius: 3,
                     p: 4,
                     border: "1px solid rgba(255, 255, 255, 0.1)",
                     boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
@@ -195,7 +195,7 @@ const LandingPage = () => {
                     sx={{
                       height: 300,
                       background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1))",
-                      borderRadius: 2,
+                      borderRadius: 3,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -234,9 +234,9 @@ const LandingPage = () => {
             </Typography>
           </motion.div>
 
-          <Grid container spacing={4}>
+          <Grid container spacing={4} justifyContent="center">
             {features.map((feature, index) => (
-              <Grid item xs={12} md={6} lg={4} key={index}>
+              <Grid item xs={12} sm={6} md={4} key={index}>
                 <motion.div
                   variants={itemVariants}
                   whileHover={{ y: -8 }}
@@ -248,7 +248,7 @@ const LandingPage = () => {
                         sx={{
                           width: 56,
                           height: 56,
-                          borderRadius: 2,
+                          borderRadius: 3,
                           background: "linear-gradient(135deg, #6366f1, #ec4899)",
                           display: "flex",
                           alignItems: "center",
@@ -297,7 +297,7 @@ const LandingPage = () => {
 
           <Grid container spacing={4} justifyContent="center">
             {pricingPlans.map((plan, index) => (
-              <Grid item xs={12} md={4} key={index}>
+              <Grid item xs={12} sm={6} md={4} key={index}>
                 <motion.div
                   variants={itemVariants}
                   whileHover={{ scale: 1.05 }}

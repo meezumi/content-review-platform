@@ -81,7 +81,7 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} left room ${documentId}`);
   });
 
-  socket.on("newComment", async ({ documentId, text, type, coordinates, pageNumber }) => {
+  socket.on("newComment", async ({ documentId, text, type, coordinates, pageNumber, version }) => {
     try {
       const user = await User.findById(socket.user.id).select("username");
 
@@ -90,6 +90,7 @@ io.on("connection", (socket) => {
         document: documentId,
         author: socket.user.id,
         type: type || "General", // Default to 'General' if not provided
+        version: version, // Add version to associate comment with specific document version
       };
 
       if (type === "Pinned" && coordinates) {

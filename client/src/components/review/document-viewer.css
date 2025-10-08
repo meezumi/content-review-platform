@@ -1,31 +1,74 @@
+.document-viewer-wrapper {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
 .document-viewer-container {
   position: relative;
-  background-color: #333;
   overflow: auto;
   height: 100%;
+  width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   padding: 16px;
+  /* Custom scrollbar */
+}
+
+.document-viewer-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.document-viewer-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.document-viewer-container::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+.document-viewer-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
 }
 
 .document-viewer-container img {
   display: block;
   max-width: 100%;    
-  max-height: 100%;   
-  width: auto;        
   height: auto;       
   object-fit: contain; 
   cursor: crosshair;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.document-viewer-container .react-pdf__Document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .document-viewer-container .react-pdf__Page {
-  margin-bottom: 16px; /* Add space between PDF pages */
+  margin-bottom: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
 }
+
 .document-viewer-container .react-pdf__Page__canvas {
-  max-width: 100%;
-  height: auto !important; /* Override inline styles from the library */
+  display: block !important;
   cursor: crosshair;
+  border-radius: 8px;
+}
+
+/* Remove extra space at bottom */
+.document-viewer-container .react-pdf__Page:last-child {
+  margin-bottom: 0;
 }
 
 .comment-pin {

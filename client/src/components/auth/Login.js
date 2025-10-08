@@ -127,7 +127,7 @@ const Login = () => {
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
               >
-                <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+                <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>
                   {error}
                 </Alert>
               </motion.div>
