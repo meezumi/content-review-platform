@@ -189,7 +189,7 @@ const LandingPage = () => {
                   }}
                 >
                   <Typography variant="h5" sx={{ mb: 2, textAlign: "center" }}>
-                    🎯 Dashboard Preview
+                    🎯 Interactive Dashboard
                   </Typography>
                   <Box
                     sx={{
@@ -203,7 +203,7 @@ const LandingPage = () => {
                     }}
                   >
                     <Typography variant="h6" color="text.secondary">
-                      Interactive Dashboard Coming Soon
+                      Real-time Analytics & Document Management
                     </Typography>
                   </Box>
                 </Box>

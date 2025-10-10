@@ -376,20 +376,21 @@ const Dashboard = () => {
                         <Typography variant="h4" sx={{ fontWeight: 700, color: stat.color }}>
                           {stat.value}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                           {stat.title}
                         </Typography>
+                        <Chip
+                          label={stat.change}
+                          size="small"
+                          color="success"
+                          sx={{ 
+                            background: "rgba(16, 185, 129, 0.1)",
+                            color: "#10b981",
+                            fontWeight: 600,
+                            fontSize: "0.7rem"
+                          }}
+                        />
                       </Box>
-                      <Chip
-                        label={stat.change}
-                        size="small"
-                        color="success"
-                        sx={{ 
-                          background: "rgba(16, 185, 129, 0.1)",
-                          color: "#10b981",
-                          fontWeight: 600
-                        }}
-                      />
                     </Box>
                   </CardContent>
                 </Card>
@@ -462,48 +463,66 @@ const Dashboard = () => {
                   </Typography>
                   <CheckCircleIcon sx={{ color: '#10b981' }} />
                 </Box>
-                <ResponsiveContainer width="100%" height="80%">
-                  <PieChart>
-                    <Pie
-                      data={statusDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {statusDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                {statusDistribution.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="80%">
+                      <PieChart>
+                        <Pie
+                          data={statusDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {statusDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0,0,0,0.8)', 
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <Box sx={{ mt: 2 }}>
+                      {statusDistribution.map((item, index) => (
+                        <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <Box 
+                            sx={{ 
+                              width: 12, 
+                              height: 12, 
+                              borderRadius: '50%', 
+                              backgroundColor: item.color, 
+                              mr: 1 
+                            }} 
+                          />
+                          <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                            {item.name}: {item.value}
+                          </Typography>
+                        </Box>
                       ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(0,0,0,0.8)', 
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px'
-                      }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <Box sx={{ mt: 2 }}>
-                  {statusDistribution.map((item, index) => (
-                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Box 
-                        sx={{ 
-                          width: 12, 
-                          height: 12, 
-                          borderRadius: '50%', 
-                          backgroundColor: item.color, 
-                          mr: 1 
-                        }} 
-                      />
-                      <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                        {item.name}: {item.value}
-                      </Typography>
                     </Box>
-                  ))}
-                </Box>
+                  </>
+                ) : (
+                  <Box sx={{ 
+                    height: '80%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'text.secondary'
+                  }}>
+                    <CheckCircleIcon sx={{ fontSize: 48, mb: 2, opacity: 0.3 }} />
+                    <Typography variant="body2" textAlign="center">
+                      Upload documents to see status distribution
+                    </Typography>
+                  </Box>
+                )}
               </Paper>
             </motion.div>
           </Grid>
