@@ -6,6 +6,7 @@ import { MentionsInput, Mention } from "react-mentions";
 import "./mentions-style.css"; 
 import "./document-viewer.css";
 import { io } from "socket.io-client";
+import DocumentViewer from "./DocumentViewer";
 import {
   Box,
   Container,
@@ -31,10 +32,7 @@ import {
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { motion } from "framer-motion";
-import { Document as PdfDocument, Page, pdfjs } from "react-pdf";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const pageVariants = {
   initial: { opacity: 0, scale: 0.9 },
@@ -88,214 +86,6 @@ const SentimentDisplay = ({ sentiment }) => {
   );
 };
 
-const DocumentViewer = ({
-  fileUrl,
-  fileType,
-  onDocClick,
-  pinnedComments,
-  onPinClick,
-  activePinId,
-}) => {
-  const [numPages, setNumPages] = useState(null);
-  const [scale, setScale] = useState(1.0);
-  const [pageWidth, setPageWidth] = useState(null);
-
-  function onDocumentLoadSuccess({ numPages }) {
-    setNumPages(numPages);
-  }
-
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.25, 3.0));
-  };
-
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev - 0.25, 0.25));
-  };
-
-  const handleResetZoom = () => {
-    setScale(1.0);
-  };
-
-  const handleFitToWidth = () => {
-    // This will be handled by CSS and the container width
-    setScale('fit-width');
-  };
-
-  const handlePageClick = (event, pageNumber) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    onDocClick({ x, y, pageNumber });
-  };
-
-  return (
-    <div className="document-viewer-wrapper">
-      {/* Zoom Controls */}
-      <Box 
-        sx={{ 
-          position: "absolute", 
-          top: 16, 
-          right: 16, 
-          zIndex: 100,
-          display: "flex",
-          gap: 1,
-          background: "rgba(0, 0, 0, 0.7)",
-          borderRadius: 2,
-          p: 1
-        }}
-      >
-        <Tooltip title="Zoom Out">
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={handleZoomOut}
-            disabled={scale <= 0.25}
-            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
-          >
-            −
-          </Button>
-        </Tooltip>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            alignSelf: "center", 
-            color: "white", 
-            minWidth: 45, 
-            textAlign: "center" 
-          }}
-        >
-          {scale === 'fit-width' ? 'Fit' : `${Math.round(scale * 100)}%`}
-        </Typography>
-        <Tooltip title="Zoom In">
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={handleZoomIn}
-            disabled={scale >= 3.0}
-            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
-          >
-            +
-          </Button>
-        </Tooltip>
-        <Tooltip title="Reset Zoom">
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={handleResetZoom}
-            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
-          >
-            ⟲
-          </Button>
-        </Tooltip>
-        <Tooltip title="Fit to Width">
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={handleFitToWidth}
-            sx={{ minWidth: 36, color: "white", borderColor: "rgba(255,255,255,0.3)" }}
-          >
-            ⟷
-          </Button>
-        </Tooltip>
-      </Box>
-
-      <div className="document-viewer-container">
-        {fileType.startsWith("image/") && (
-          <div
-            style={{ 
-              position: "relative",
-              transform: scale === 'fit-width' ? 'none' : `scale(${scale})`,
-              transformOrigin: "top center",
-              transition: "transform 0.3s ease"
-            }}
-            onClick={(e) => handlePageClick(e, 1)}
-          >
-            <img 
-              src={fileUrl} 
-              alt="review document" 
-              style={{
-                maxWidth: scale === 'fit-width' ? '100%' : 'none',
-                width: scale === 'fit-width' ? '100%' : 'auto'
-              }}
-            />
-            {pinnedComments.map((comment, index) => (
-              <Tooltip key={comment._id} title={comment.text}>
-                <div
-                  className={`comment-pin ${
-                    comment._id === activePinId ? "active" : ""
-                  }`}
-                  style={{
-                    left: `${comment.x_coordinate}%`,
-                    top: `${comment.y_coordinate}%`,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPinClick(comment._id);
-                  }}
-                >
-                  {index + 1}
-                </div>
-              </Tooltip>
-            ))}
-          </div>
-        )}
-        {fileType === "application/pdf" && (
-          <div 
-            style={{
-              transform: scale === 'fit-width' ? 'none' : `scale(${scale})`,
-              transformOrigin: "top center",
-              transition: "transform 0.3s ease"
-            }}
-          >
-            <PdfDocument file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
-              {Array.from(new Array(numPages), (el, index) => {
-                const pageNumber = index + 1;
-                const pinsForThisPage = pinnedComments.filter(
-                  (p) => p.pageNumber === pageNumber
-                );
-                return (
-                  <div
-                    key={`page_container_${pageNumber}`}
-                    style={{ 
-                      position: "relative",
-                      marginBottom: pageNumber < numPages ? 16 : 0
-                    }}
-                    onClick={(e) => handlePageClick(e, pageNumber)}
-                  >
-                    <Page 
-                      pageNumber={pageNumber}
-                      width={scale === 'fit-width' ? pageWidth : undefined}
-                      scale={scale === 'fit-width' ? undefined : scale}
-                    />
-                    {pinsForThisPage.map((comment, pinIndex) => (
-                      <Tooltip key={comment._id} title={comment.text}>
-                        <div
-                          className={`comment-pin ${
-                            comment._id === activePinId ? "active" : ""
-                          }`}
-                          style={{
-                            left: `${comment.x_coordinate}%`,
-                            top: `${comment.y_coordinate}%`,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPinClick(comment._id);
-                          }}
-                        >
-                          {pinIndex + 1}
-                        </div>
-                      </Tooltip>
-                    ))}
-                  </div>
-                );
-              })}
-            </PdfDocument>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const ReviewPage = () => {
   const { id: documentId } = useParams();
@@ -641,12 +431,55 @@ const ReviewPage = () => {
               </Typography>
             </Paper>
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Document Version</InputLabel>
+            <FormControl 
+              fullWidth 
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(10px)',
+                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                  '&.Mui-focused fieldset': { borderColor: '#6366f1' }
+                },
+                '& .MuiInputLabel-root': { 
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontWeight: 500
+                },
+                '& .MuiSelect-select': { 
+                  color: 'white',
+                  fontWeight: 500
+                }
+              }}
+            >
+              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                Document Version
+              </InputLabel>
               <Select
                 value={activeVersionId}
                 label="Document Version"
                 onChange={(e) => setActiveVersionId(e.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      background: 'rgba(0, 0, 0, 0.9)',
+                      backdropFilter: 'blur(20px)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      '& .MuiMenuItem-root': {
+                        color: 'white',
+                        '&:hover': {
+                          background: 'rgba(99, 102, 241, 0.2)'
+                        },
+                        '&.Mui-selected': {
+                          background: 'rgba(99, 102, 241, 0.3)',
+                          '&:hover': {
+                            background: 'rgba(99, 102, 241, 0.4)'
+                          }
+                        }
+                      }
+                    }
+                  }
+                }}
               >
                 {document.versions.map((v, index) => (
                   <MenuItem key={v._id} value={v._id}>
@@ -658,21 +491,24 @@ const ReviewPage = () => {
               </Select>
             </FormControl>
 
-            <Paper
-              ref={documentViewerRef}
-              sx={{ height: "100vh", backgroundColor: "#333", borderRadius: 3 }}
-            >
-              {activeVersion && (
-                <DocumentViewer
-                  fileUrl={documentUrl}
-                  fileType={activeVersion.mimetype}
-                  onDocClick={handleDocClick}
-                  pinnedComments={pinnedComments}
-                  onPinClick={setActivePinId}
-                  activePinId={activePinId}
-                />
-              )}
-            </Paper>
+            {activeVersion && (
+              <DocumentViewer
+                document={document}
+                comments={pinnedComments}
+                onNewComment={(text, location) => {
+                  if (socket) {
+                    socket.emit("newComment", {
+                      documentId,
+                      text,
+                      type: "Pinned",
+                      coordinates: { x: location.x, y: location.y },
+                      pageNumber: location.pageNumber || 1,
+                      version: activeVersionId,
+                    });
+                  }
+                }}
+              />
+            )}
           </Grid>
 
           <Grid item xs={12} md={4}>
@@ -867,7 +703,7 @@ const ReviewPage = () => {
                       <div ref={commentsEndRef} />
                     </List>
                   </Box>
-                  <Box sx={{ borderTop: "1px solid rgba(255, 255, 255, 0.1)", pt: 2 }}>
+                  <Box sx={{ pt: 2 }}>
                     <MentionsInput
                       value={newComment}
                       onChange={(event) => setNewComment(event.target.value)}

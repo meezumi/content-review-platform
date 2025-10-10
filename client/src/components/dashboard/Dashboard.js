@@ -353,7 +353,7 @@ const Dashboard = () => {
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {statsData.map((stat, index) => (
-            <Grid item xs={12} sm={6} lg={3} key={index}>
+            <Grid item xs={12} sm={6} md={3} key={index}>
               <motion.div
                 variants={itemVariants}
                 initial="hidden"
@@ -689,7 +689,7 @@ const Dashboard = () => {
               Quick Actions
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={6} sm={3} md={3}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -704,10 +704,10 @@ const Dashboard = () => {
                     }
                   }}
                 >
-                  View All Documents
+                  View All
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={6} sm={3} md={3}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -722,10 +722,10 @@ const Dashboard = () => {
                     }
                   }}
                 >
-                  Review Pending
+                  Pending
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={6} sm={3} md={3}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -740,10 +740,10 @@ const Dashboard = () => {
                     }
                   }}
                 >
-                  View Approved
+                  Approved
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={6} sm={3} md={3}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -758,7 +758,7 @@ const Dashboard = () => {
                     }
                   }}
                 >
-                  View Analytics
+                  Analytics
                 </Button>
               </Grid>
             </Grid>

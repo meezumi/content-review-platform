@@ -1,12 +1,49 @@
 import React, { useState } from "react";
-import { Box, Paper, Typography, TextField, Button } from "@mui/material";
+import { Box, Paper, Typography, TextField, Button, IconButton, CircularProgress } from "@mui/material";
+import { 
+  ZoomIn as ZoomInIcon, 
+  ZoomOut as ZoomOutIcon, 
+  Refresh as ResetZoomIcon,
+  Fullscreen as FullscreenIcon 
+} from '@mui/icons-material';
 import CommentPin from "./CommentPin";
 
-const DocumentViewer = ({ document, comments, onNewComment }) => {
+const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn, onZoomOut, onResetZoom }) => {
   const [tempPin, setTempPin] = useState(null);
   const [commentText, setCommentText] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  if (!document) return null;
+  if (!document) {
+    return (
+      <Paper sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: 400,
+        background: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: 3,
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <Typography color="text.secondary">No document selected</Typography>
+      </Paper>
+    );
+  }
+
+  const handleLoad = () => {
+    setIsLoading(false);
+    setError(null);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setError('Failed to load document');
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
 
   const handleImageClick = (e) => {
     if (e.target.id !== "document-image") return; // Only trigger on the image itself
@@ -25,38 +62,183 @@ const DocumentViewer = ({ document, comments, onNewComment }) => {
     setCommentText("");
   };
 
-  const documentUrl = `http://localhost:5000/${document.path}`;
-  const isImage = ["image/jpeg", "image/png", "image/gif"].includes(
-    document.mimetype
-  );
+  const documentUrl = `http://localhost:5000/${document.activeVersion ? document.activeVersion.path : document.path}`;
+  const mimetype = document.activeVersion ? document.activeVersion.mimetype : document.mimetype;
+  const isImage = ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mimetype);
+  const isPDF = mimetype === 'application/pdf';
 
   return (
-    <Paper
-      onClick={isImage ? handleImageClick : null}
-      sx={{
-        height: "75vh",
-        p: 1,
-        backgroundColor: "#2a2a2a",
-        borderRadius: 2,
-        position: "relative", // Parent must be relative for pins
-        overflow: "hidden",
-      }}
-    >
-      {isImage ? (
-        <img
-          id="document-image"
-          src={documentUrl}
-          alt={document.originalName}
-          style={{ width: "100%", height: "100%", objectFit: "contain" }}
-        />
-      ) : (
-        <iframe
-          src={documentUrl}
-          title={document.originalName}
-          width="100%"
-          height="100%"
-          frameBorder="0"
-        />
+    <Paper sx={{ 
+      position: 'relative',
+      borderRadius: 3,
+      overflow: 'hidden',
+      background: 'rgba(255, 255, 255, 0.05)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      minHeight: 600,
+      height: isFullscreen ? '100vh' : '75vh'
+    }}>
+      {/* Zoom Controls */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 16, 
+        right: 16, 
+        zIndex: 10,
+        display: 'flex',
+        gap: 1
+      }}>
+        {onZoomOut && (
+          <IconButton 
+            onClick={onZoomOut}
+            sx={{ 
+              background: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              backdropFilter: 'blur(10px)',
+              '&:hover': { background: 'rgba(0, 0, 0, 0.9)' }
+            }}
+          >
+            <ZoomOutIcon />
+          </IconButton>
+        )}
+        {onResetZoom && (
+          <IconButton 
+            onClick={onResetZoom}
+            sx={{ 
+              background: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              backdropFilter: 'blur(10px)',
+              '&:hover': { background: 'rgba(0, 0, 0, 0.9)' }
+            }}
+          >
+            <ResetZoomIcon />
+          </IconButton>
+        )}
+        {onZoomIn && (
+          <IconButton 
+            onClick={onZoomIn}
+            sx={{ 
+              background: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              backdropFilter: 'blur(10px)',
+              '&:hover': { background: 'rgba(0, 0, 0, 0.9)' }
+            }}
+          >
+            <ZoomInIcon />
+          </IconButton>
+        )}
+        <IconButton 
+          onClick={toggleFullscreen}
+          sx={{ 
+            background: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            backdropFilter: 'blur(10px)',
+            '&:hover': { background: 'rgba(0, 0, 0, 0.9)' }
+          }}
+        >
+          <FullscreenIcon />
+        </IconButton>
+      </Box>
+
+      {/* Loading Indicator */}
+      {isLoading && (
+        <Box sx={{ 
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 5
+        }}>
+          <CircularProgress sx={{ color: '#6366f1' }} />
+        </Box>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 400,
+          flexDirection: 'column',
+          gap: 2
+        }}>
+          <Typography color="error" variant="h6">{error}</Typography>
+          <Typography color="text.secondary">
+            Try refreshing the page or contact support
+          </Typography>
+        </Box>
+      )}
+
+      {/* Document Content */}
+      {!error && (
+        <Box 
+          onClick={(isImage || isPDF) ? handleImageClick : null}
+          sx={{ 
+            width: '100%',
+            height: '100%',
+            position: isFullscreen ? 'fixed' : 'relative',
+            top: isFullscreen ? 0 : 'auto',
+            left: isFullscreen ? 0 : 'auto',
+            zIndex: isFullscreen ? 9999 : 1,
+            background: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : '#f8f9fa',
+            cursor: 'crosshair',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {isPDF ? (
+            <iframe
+              src={`${documentUrl}#zoom=${Math.round(scale * 100)}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                background: 'white',
+                borderRadius: isFullscreen ? 0 : '12px'
+              }}
+              onLoad={handleLoad}
+              onError={handleError}
+              title="Document Preview"
+            />
+          ) : isImage ? (
+            <img
+              id="document-image"
+              src={documentUrl}
+              alt={document.activeVersion?.originalName || document.originalName}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                transform: `scale(${scale})`,
+                transition: 'transform 0.2s ease',
+                borderRadius: '8px',
+                objectFit: 'contain'
+              }}
+              onLoad={handleLoad}
+              onError={handleError}
+            />
+          ) : (
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              p: 4,
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 2,
+              backdropFilter: 'blur(10px)'
+            }}>
+              <Typography variant="h6" color="text.primary">
+                Preview not available for this file type
+              </Typography>
+              <Typography color="text.secondary">
+                File: {document.activeVersion?.originalName || document.originalName}
+              </Typography>
+              <Typography color="text.secondary">
+                Type: {mimetype}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       )}
 
       {/* Render existing comment pins */}
@@ -74,11 +256,15 @@ const DocumentViewer = ({ document, comments, onNewComment }) => {
             left: `${tempPin.x}%`,
             top: `${tempPin.y}%`,
             p: 2,
-            zIndex: 10,
+            zIndex: 1000,
             transform: "translate(-50%, 10px)",
+            background: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            maxWidth: 300
           }}
         >
-          <Typography variant="subtitle2">
+          <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
             Add comment at this point:
           </Typography>
           <TextField
@@ -88,16 +274,36 @@ const DocumentViewer = ({ document, comments, onNewComment }) => {
             rows={2}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            sx={{ my: 1 }}
+            sx={{ 
+              my: 1,
+              '& .MuiOutlinedInput-root': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                '&.Mui-focused fieldset': { borderColor: '#6366f1' }
+              },
+              '& .MuiInputBase-input': { color: 'white' }
+            }}
+            placeholder="Enter your comment..."
           />
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-            <Button size="small" onClick={() => setTempPin(null)}>
+            <Button 
+              size="small" 
+              onClick={() => setTempPin(null)}
+              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            >
               Cancel
             </Button>
             <Button
               size="small"
               variant="contained"
               onClick={submitContextualComment}
+              sx={{ 
+                background: 'linear-gradient(135deg, #6366f1, #ec4899)',
+                '&:hover': { 
+                  background: 'linear-gradient(135deg, #5855eb, #d946ef)' 
+                }
+              }}
             >
               Save
             </Button>
