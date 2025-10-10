@@ -302,6 +302,17 @@ const ReviewPage = () => {
         config
       );
       console.log("Upload response:", response.data);
+      
+      // Update the document state directly with the response data
+      // This prevents the need to refetch and avoids potential auth issues
+      if (response.data) {
+        setDocument(response.data);
+        // Set the newly uploaded version as active
+        if (response.data.versions && response.data.versions.length > 0) {
+          setActiveVersionId(response.data.versions[0]._id);
+        }
+      }
+      
       setSnackbarMessage("New version uploaded successfully!");
       setShowSnackbar(true);
       
@@ -310,24 +321,18 @@ const ReviewPage = () => {
         fileInputRef.current.value = '';
       }
       
-      // Small delay to ensure server has processed everything
-      setTimeout(() => {
-        fetchDocumentData(); // Re-fetch all data to get the latest state
-      }, 500);
-      
     } catch (err) {
       console.error("Error uploading new version:", err);
       
-      // Handle specific error cases
+      // Handle specific error cases more gracefully without logout
       if (err.response?.status === 401) {
-        setSnackbarMessage("Authentication error. Please log in again.");
-        // Don't automatically logout, let user handle it
+        setSnackbarMessage("Session may have expired. Please try again or refresh the page.");
       } else if (err.response?.status === 403) {
         setSnackbarMessage("You don't have permission to upload a new version.");
       } else if (err.response?.status >= 500) {
         setSnackbarMessage("Server error. Please try again later.");
       } else {
-        setSnackbarMessage("Upload failed. Please try again.");
+        setSnackbarMessage(err.response?.data?.msg || "Upload failed. Please try again.");
       }
       setShowSnackbar(true);
     }
@@ -493,7 +498,10 @@ const ReviewPage = () => {
 
             {activeVersion && (
               <DocumentViewer
-                document={document}
+                document={{
+                  ...document,
+                  activeVersion: activeVersion // Pass the selected version as activeVersion
+                }}
                 comments={pinnedComments}
                 onNewComment={(text, location) => {
                   if (socket) {
@@ -530,24 +538,40 @@ const ReviewPage = () => {
                 >
                   <Box sx={{ 
                     display: "flex", 
-                    alignItems: "center", 
+                    flexDirection: "column",
                     mb: 2,
                     pb: 1,
                     borderBottom: "1px solid rgba(255, 255, 255, 0.1)"
                   }}>
-                    <LocationOnIcon sx={{ mr: 1, color: "#6366f1" }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Contextual Comments
-                    </Typography>
-                    <Chip 
-                      label={pinnedComments.length} 
-                      size="small" 
+                    <Box sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      mb: 1
+                    }}>
+                      <LocationOnIcon sx={{ mr: 1, color: "#6366f1" }} />
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Contextual Comments
+                      </Typography>
+                      <Chip 
+                        label={pinnedComments.length} 
+                        size="small" 
+                        sx={{ 
+                          ml: "auto",
+                          background: "rgba(99, 102, 241, 0.2)",
+                          color: "#6366f1"
+                        }} 
+                      />
+                    </Box>
+                    <Typography 
+                      variant="caption" 
                       sx={{ 
-                        ml: "auto",
-                        background: "rgba(99, 102, 241, 0.2)",
-                        color: "#6366f1"
-                      }} 
-                    />
+                        color: "rgba(255, 255, 255, 0.6)",
+                        fontStyle: "italic",
+                        fontSize: "0.75rem"
+                      }}
+                    >
+                      Note: Contextual comments only work with image uploads (JPG, PNG, etc.). Use general comments for PDFs.
+                    </Typography>
                   </Box>
                   <Box sx={{ flexGrow: 1, overflowY: "auto", mb: 2 }}>
                     <List dense sx={{ py: 0 }}>
@@ -615,8 +639,11 @@ const ReviewPage = () => {
                           color: "text.secondary"
                         }}>
                           <LocationOnIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
-                          <Typography variant="body2">
-                            Click on the document to add contextual comments
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            Click on images to add contextual comments
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                            (Images only - JPG, PNG, GIF, etc.)
                           </Typography>
                         </Box>
                       )}
