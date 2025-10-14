@@ -232,6 +232,42 @@ router.post(
     document.versions.push(newVersion);
     document.activeVersion = newVersion;
     document.status = "In Review";
+
+    // Generate summary for the new version
+    let newSummary = "Summary is not applicable for this file type.";
+    let extractedText = "";
+
+    if (mimetype === "application/pdf") {
+      console.log(`Extracting text from new version PDF: ${path}`);
+      
+      try {
+        const dataBuffer = fs.readFileSync(path);
+        const pdfData = await pdf(dataBuffer);
+        extractedText = pdfData.text;
+        console.log("PDF text extracted successfully from new version.");
+      } catch (parseError) {
+        console.error("Error parsing PDF from new version:", parseError);
+        extractedText = "Could not extract text from this PDF.";
+      }
+
+      if (extractedText.length < 100) {
+        extractedText = await extractTextWithOCR(path);
+      }
+    } else if (mimetype === "text/plain") {
+      extractedText = fs.readFileSync(path, "utf8");
+    } else if (mimetype.startsWith("image/")) {
+      extractedText = await extractTextWithOCR(path);
+    }
+
+    if (extractedText && extractedText.length > 20) {
+      console.log("Sending extracted text to AI for new version summarization...");
+      newSummary = await generateSummary(extractedText);
+      console.log("Summary received from AI for new version.");
+    } else {
+      newSummary = "Could not extract enough text to generate a summary.";
+    }
+
+    document.summary = newSummary;
     await document.save();
 
     try {
@@ -267,6 +303,79 @@ router.post(
     res.json(document);
   }
 );
+
+// @route   POST /:id/regenerate-summary
+// @desc    Regenerate AI summary for a specific version or active version (SECURED)
+router.post("/:id/regenerate-summary", [auth, checkDocumentPermission], async (req, res) => {
+  if (!AI_SERVICE_URL) {
+    return res.status(500).json({ msg: 'AI service is not configured.' });
+  }
+
+  try {
+    const document = req.document;
+    const { versionId } = req.body; // Optional version ID from request body
+    
+    // Use specified version or fall back to active version
+    let targetVersion;
+    if (versionId) {
+      targetVersion = document.versions.find(v => v._id.toString() === versionId);
+      if (!targetVersion) {
+        return res.status(400).json({ msg: 'Specified version not found.' });
+      }
+    } else {
+      targetVersion = document.activeVersion;
+    }
+    
+    if (!targetVersion || !targetVersion.path) {
+      return res.status(400).json({ msg: 'No valid version found for this document.' });
+    }
+
+    let extractedText = "";
+    const { path: filePath, mimetype } = targetVersion;
+
+    // Extract text based on file type (same logic as upload)
+    if (mimetype === "application/pdf") {
+      console.log(`Extracting text from PDF for summary regeneration: ${filePath}`);
+      
+      try {
+        const dataBuffer = fs.readFileSync(filePath);
+        const pdfData = await pdf(dataBuffer);
+        extractedText = pdfData.text;
+        console.log("PDF text extracted successfully for summary regeneration.");
+      } catch (parseError) {
+        console.error("Error parsing PDF for summary:", parseError);
+        extractedText = "Could not extract text from this PDF.";
+      }
+
+      // Fallback to OCR if PDF parsing didn't yield enough text
+      if (extractedText.length < 100) {
+        extractedText = await extractTextWithOCR(filePath);
+      }
+    } else if (mimetype === "text/plain") {
+      extractedText = fs.readFileSync(filePath, "utf8");
+    } else if (mimetype.startsWith("image/")) {
+      extractedText = await extractTextWithOCR(filePath);
+    }
+
+    let newSummary;
+    if (extractedText && extractedText.length > 20) {
+      console.log("Sending extracted text to AI for summary regeneration...");
+      newSummary = await generateSummary(extractedText);
+      console.log("New summary received from AI.");
+    } else {
+      newSummary = "Could not extract enough text to generate a summary.";
+    }
+
+    // Update the document with the new summary
+    document.summary = newSummary;
+    await document.save();
+
+    res.json({ summary: newSummary });
+  } catch (err) {
+    console.error("Error regenerating summary:", err.message);
+    res.status(500).json({ msg: 'Failed to regenerate summary.' });
+  }
+});
 
 // @route   PUT /:id/status
 // @desc    Update the status of a document (SECURED)

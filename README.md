@@ -1,5 +1,8 @@
 # Collaborative Content Review and Approval Platform
 
+![alt text](brave_screenshot_localhost.png)
+![alt text](<Screenshot From 2025-10-10 17-19-58.png>)
+
 ## Project Overview
 
 This is a full-stack web application designed to streamline the content review and approval process for teams. It provides a centralized platform where users can upload documents, images, and videos, and stakeholders can provide feedback through real-time comments and formal approvals. The goal of this project is to eliminate the confusion of email chains and fragmented feedback, creating a single source of truth for creative and marketing workflows.

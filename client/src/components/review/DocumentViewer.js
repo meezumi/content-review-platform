@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, TextField, Button, IconButton, CircularProgress } from "@mui/material";
 import { 
   ZoomIn as ZoomInIcon, 
@@ -14,6 +14,17 @@ const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn,
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  
+  // Handle window resize for responsive height
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (!document) {
     return (
@@ -67,6 +78,16 @@ const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn,
   const isImage = ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mimetype);
   const isPDF = mimetype === 'application/pdf';
 
+  // Calculate responsive height based on viewport and screen size
+  const getViewerHeight = () => {
+    if (isFullscreen) return '100vh';
+    
+    // Make height more aggressive on larger screens
+    if (viewportHeight >= 1080) return Math.min(viewportHeight * 0.85, 900); // 85% on large screens
+    if (viewportHeight >= 768) return Math.min(viewportHeight * 0.8, 750);   // 80% on medium screens
+    return Math.max(400, viewportHeight * 0.6); // 60% on smaller screens, min 400px
+  };
+
   return (
     <Paper sx={{ 
       position: 'relative',
@@ -74,8 +95,12 @@ const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn,
       overflow: 'hidden',
       background: 'rgba(255, 255, 255, 0.05)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
-      minHeight: 600,
-      height: isFullscreen ? '100vh' : '75vh'
+      height: isFullscreen ? '100vh' : getViewerHeight(),
+      minHeight: isFullscreen ? '100vh' : '400px',
+      width: '100%',
+      maxWidth: '100%',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       {/* Zoom Controls */}
       <Box sx={{ 
@@ -175,15 +200,17 @@ const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn,
           sx={{ 
             width: '100%',
             height: '100%',
+            flex: 1,
             position: isFullscreen ? 'fixed' : 'relative',
             top: isFullscreen ? 0 : 'auto',
             left: isFullscreen ? 0 : 'auto',
             zIndex: isFullscreen ? 9999 : 1,
             background: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : '#f8f9fa',
-            cursor: 'crosshair',
+            cursor: (isImage || isPDF) ? 'crosshair' : 'default',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            overflow: 'hidden'
           }}
         >
           {isPDF ? (
@@ -192,9 +219,11 @@ const DocumentViewer = ({ document, comments, onNewComment, scale = 1, onZoomIn,
               style={{
                 width: '100%',
                 height: '100%',
+                minHeight: 'inherit',
                 border: 'none',
                 background: 'white',
-                borderRadius: isFullscreen ? 0 : '12px'
+                borderRadius: isFullscreen ? 0 : '12px',
+                display: 'block'
               }}
               onLoad={handleLoad}
               onError={handleError}

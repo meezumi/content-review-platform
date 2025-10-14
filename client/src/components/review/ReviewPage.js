@@ -20,6 +20,7 @@ import {
   Divider,
   Grid,
   Snackbar,
+  Box,
   Select,
   MenuItem,
   FormControl,
@@ -28,6 +29,8 @@ import {
   Tooltip,
   Popover,
   Chip,
+  CircularProgress,
+  IconButton,
 } from "@mui/material";
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -98,6 +101,8 @@ const ReviewPage = () => {
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [sentiment, setSentiment] = useState(null);
+  const [aiSummary, setAiSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [newPinLocation, setNewPinLocation] = useState(null); // {x, y} for a new pending pin
   const [popoverAnchor, setPopoverAnchor] = useState(null); // Anchor for the new comment popover
@@ -262,6 +267,84 @@ const ReviewPage = () => {
     }
   }, [comments, shouldAutoScroll]);
 
+  // Initialize AI summary when document loads
+  useEffect(() => {
+    if (document && document.summary) {
+      setAiSummary(document.summary);
+    }
+  }, [document]);
+
+  // Regenerate AI summary when version changes
+  useEffect(() => {
+    if (activeVersionId && document && document.versions) {
+      // Find the selected version and check if it's different from current document summary
+      const selectedVersion = document.versions.find(v => v._id === activeVersionId);
+      
+      // If user selects a different version than the current active one, regenerate summary
+      if (selectedVersion && activeVersionId !== document.activeVersion._id) {
+        regenerateSummaryForVersion(selectedVersion);
+      }
+    }
+  }, [activeVersionId]);
+
+  const regenerateSummary = async () => {
+    if (!token) return;
+    
+    setSummaryLoading(true);
+    const config = { headers: { "x-auth-token": token } };
+    
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/documents/${documentId}/regenerate-summary`,
+        {},
+        config
+      );
+      
+      if (response.data && response.data.summary) {
+        setAiSummary(response.data.summary);
+        setSnackbarMessage("AI summary updated!");
+        setShowSnackbar(true);
+      }
+    } catch (err) {
+      console.error("Error regenerating summary:", err);
+      setSnackbarMessage("Failed to update AI summary");
+      setShowSnackbar(true);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const regenerateSummaryForVersion = async (version) => {
+    if (!token) return;
+    
+    setSummaryLoading(true);
+    const config = { 
+      headers: { "x-auth-token": token },
+    };
+    
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/documents/${documentId}/regenerate-summary`,
+        { versionId: version._id },
+        config
+      );
+      
+      if (response.data && response.data.summary) {
+        setAiSummary(response.data.summary);
+        setSnackbarMessage(`AI summary generated for version: ${version.originalName}`);
+        setShowSnackbar(true);
+      }
+    } catch (err) {
+      console.error("Error generating summary for version:", err);
+      // Fallback to showing version info
+      setAiSummary(`Unable to generate summary for this version. File: ${version.originalName}, uploaded on ${new Date(version.createdAt).toLocaleDateString()}.`);
+      setSnackbarMessage("Failed to generate summary for this version");
+      setShowSnackbar(true);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const handleSendComment = () => {
     if (newComment.trim() && socket) {
       socket.emit("newComment", { documentId, text: newComment, version: activeVersionId });
@@ -423,17 +506,62 @@ const ReviewPage = () => {
         </Box>
 
         <Grid container spacing={2}>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={8} lg={9}>
             <Paper
-              sx={{ p: 2, mb: 2, borderRadius: 3, border: "1px solid #444" }}
+              sx={{ 
+                p: 2, 
+                mb: 2, 
+                borderRadius: 3, 
+                border: "1px solid #444",
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(20px)',
+              }}
             >
-              <Typography variant="h6" gutterBottom>
-                <AutoFixHighIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-                AI Summary
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {document.summary}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                <Typography variant="h6" sx={{ display: "flex", alignItems: "center" }}>
+                  <AutoFixHighIcon sx={{ mr: 1, color: "#6366f1" }} />
+                  AI Summary
+                </Typography>
+                <Tooltip title="Regenerate summary for current version">
+                  <IconButton 
+                    size="small" 
+                    onClick={regenerateSummary}
+                    disabled={summaryLoading}
+                    sx={{ 
+                      color: "#6366f1",
+                      '&:hover': { 
+                        background: 'rgba(99, 102, 241, 0.1)' 
+                      }
+                    }}
+                  >
+                    <AutoFixHighIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              
+              {summaryLoading ? (
+                <Box>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Generating AI summary...
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    sx={{ 
+                      borderRadius: 1,
+                      background: "rgba(99, 102, 241, 0.1)",
+                      "& .MuiLinearProgress-bar": {
+                        background: "linear-gradient(90deg, #6366f1, #ec4899)",
+                      }
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                  {aiSummary || "No summary available. Click the refresh button to generate one."}
+                </Typography>
+              )}
             </Paper>
 
             <FormControl 
@@ -497,29 +625,38 @@ const ReviewPage = () => {
             </FormControl>
 
             {activeVersion && (
-              <DocumentViewer
-                document={{
-                  ...document,
-                  activeVersion: activeVersion // Pass the selected version as activeVersion
+              <Box 
+                sx={{ 
+                  width: '100%', 
+                  height: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column'
                 }}
-                comments={pinnedComments}
-                onNewComment={(text, location) => {
-                  if (socket) {
-                    socket.emit("newComment", {
-                      documentId,
-                      text,
-                      type: "Pinned",
-                      coordinates: { x: location.x, y: location.y },
-                      pageNumber: location.pageNumber || 1,
-                      version: activeVersionId,
-                    });
-                  }
-                }}
-              />
+              >
+                <DocumentViewer
+                  document={{
+                    ...document,
+                    activeVersion: activeVersion // Pass the selected version as activeVersion
+                  }}
+                  comments={pinnedComments}
+                  onNewComment={(text, location) => {
+                    if (socket) {
+                      socket.emit("newComment", {
+                        documentId,
+                        text,
+                        type: "Pinned",
+                        coordinates: { x: location.x, y: location.y },
+                        pageNumber: location.pageNumber || 1,
+                        version: activeVersionId,
+                      });
+                    }
+                  }}
+                />
+              </Box>
             )}
           </Grid>
 
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={4} lg={3}>
             {/* Comments Section - Horizontal Layout */}
             <Grid container spacing={2} sx={{ height: "100vh" }}>
               {/* Contextual Comments Section */}
