@@ -1,4 +1,4 @@
-# Collaborative Content Review and Approval Platform
+# ContentFlow - A Collaborative Content Review and Approval Platform
 
 ![alt text](brave_screenshot_localhost.png)
 ![alt text](<Screenshot From 2025-10-10 17-19-58.png>)
